@@ -1,0 +1,142 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.head_commit.message, '[Release]')
+
+    strategy:
+      matrix:
+        php: [ '7.4', '8.0', '8.1', '8.2', '8.3', '8.4' ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev
+
+      - name: Check PHP syntax
+        run: find {src,tests} -type f -name "*.php" -exec php -l {} \;
+
+  analyze-code:
+    needs: syntax-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: php-cs-fixer, phpstan
+          extensions: mbstring
+
+      - name: Install Composer dependencies
+        run: composer install
+
+      - name: Run PHP-CS-Fixer
+        run: php-cs-fixer fix --dry-run --diff
+
+      - name: Run PHPStan
+        run: phpstan analyse src tests
+
+  check-dependencies:
+    needs: analyze-code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install Composer dependencies
+        run: composer install
+
+      - name: Run security checker
+        run: composer require --dev enlightn/security-checker && vendor/bin/security-checker security:check
+
+  run-tests:
+    needs: check-dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: pcov
+          ini-values: zend.assertions=1
+
+      - name: Install Composer dependencies
+        run: composer install
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.xml
+          fail_ci_if_error: true
+
+      - name: Upload coverage report to Code Climate
+        uses: paambaati/codeclimate-action@v5
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          coverageLocations: ${{github.workspace}}/coverage.xml:clover
+
+  create-release:
+    needs: run-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev
+
+      - name: Get current version
+        id: current-version
+        run: |
+          VERSION=$(composer config version --quiet)
+          echo "Current version: $VERSION"
+          echo "::set-output name=version::$VERSION"
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.current-version.outputs.version }}
+          release_name: Release v${{ steps.current-version.outputs.version }}
+          body: 'New release for version ${{ steps.current-version.outputs.version }}'
+          draft: false
+          prerelease: false

@@ -1,0 +1,26 @@
+name: Update Contributors
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+  workflow_dispatch:
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Add contributors
+        uses: BobAnkh/add-contributors@v0.2.2
+        with:
+          CONTRIBUTOR: '## Contributors ✨'
+          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORED_CONTRIBUTORS: 'Sascha Greuel'

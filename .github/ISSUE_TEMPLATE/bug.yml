@@ -1,0 +1,63 @@
+name: 🐛 Bug Report
+description: Submit a bug report to help us improve.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "## 🐛 Bug Report"
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: previous-research
+    attributes:
+      label: Have you spent some time to check if this issue has been raised before?
+      options:
+        - label: I have googled for a similar issue or checked our older issues for a similar bug
+          required: true
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Have you read the Code of Conduct?
+      options:
+        - label: I have read the [Code of Conduct](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/CODE_OF_CONDUCT.md)
+          required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: To Reproduce
+      description: Write your steps here
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Write down what you thought would happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: Write what happened. Add screenshots, if applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Your Environment
+      description: Include as many relevant details about the environment you experienced the bug in (e.g., Environment, Operating system and version, etc.)
+    validations:
+      required: true

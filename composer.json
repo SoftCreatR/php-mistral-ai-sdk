@@ -1,0 +1,59 @@
+{
+  "name": "softcreatr/php-mistral-ai-sdk",
+  "description": "A powerful and easy-to-use PHP SDK for the Mistral AI API, allowing seamless integration of advanced AI-powered features into your PHP projects.",
+  "license": "ISC",
+  "type": "library",
+  "version": "1.0.0",
+  "keywords": [
+    "mistral",
+    "ai",
+    "llama",
+    "replit",
+    "gpt",
+    "gpt-3",
+    "gpt-4",
+    "artificial-intelligence",
+    "machine-learning",
+    "natural-language-processing",
+    "nlp",
+    "php",
+    "sdk",
+    "api-wrapper"
+  ],
+  "authors": [
+    {
+      "name": "Sascha Greuel",
+      "email": "hello@1-2.dev"
+    }
+  ],
+  "require": {
+    "php": ">=7.4",
+    "ext-json": "*",
+    "psr/http-client": "^1.0",
+    "psr/http-factory": "^1.0",
+    "psr/http-message": "^1.0"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3",
+    "guzzlehttp/guzzle": "^7",
+    "phpunit/phpunit": "^9"
+  },
+  "minimum-stability": "stable",
+  "autoload": {
+    "psr-4": {
+      "SoftCreatR\\MistralAI\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "SoftCreatR\\MistralAI\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "scripts": {
+    "phpcsf": "php-cs-fixer fix",
+    "test": "phpunit"
+  }
+}
