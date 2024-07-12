@@ -3,7 +3,7 @@
   "description": "A powerful and easy-to-use PHP SDK for the Mistral AI API, allowing seamless integration of advanced AI-powered features into your PHP projects.",
   "license": "ISC",
   "type": "library",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "keywords": [
     "mistral",
     "ai",
