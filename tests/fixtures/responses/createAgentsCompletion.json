@@ -1,0 +1,32 @@
+{
+  "id": "cmpl-e5cc70bb28c444948073e77776eb30ef",
+  "object": "chat.completion",
+  "model": "mistral-small-latest",
+  "usage": {
+    "prompt_tokens": 16,
+    "completion_tokens": 34,
+    "total_tokens": 50
+  },
+  "created": 1702256327,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "content": "string",
+        "tool_calls": [
+          {
+            "id": "null",
+            "type": "function",
+            "function": {
+              "name": "string",
+              "arguments": {}
+            }
+          }
+        ],
+        "prefix": false,
+        "role": "assistant"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

@@ -18,7 +18,7 @@
 
 namespace SoftCreatR\MistralAI;
 
-use Exception;
+use InvalidArgumentException;
 use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -28,6 +28,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\UriInterface;
+use Random\RandomException;
 use SensitiveParameter;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
 
@@ -36,68 +37,49 @@ use const JSON_THROW_ON_ERROR;
 /**
  * A wrapper for the MistralAI API.
  *
- * @property string $apiKey
- * @property string $origin
- *
- * @method ResponseInterface createChatCompletion(array $options = [])
- * @method ResponseInterface createEmbedding(array $options = [])
- * @method ResponseInterface listModels()
+ * @method ResponseInterface|null listModels() Perform a GET request to list all models.
+ * @method ResponseInterface|null retrieveModel(array $parameters) Perform a GET request to retrieve a specific model.
+ * @method ResponseInterface|null deleteModel(array $parameters) Perform a DELETE request to delete a specific model.
+ * @method ResponseInterface|null updateFineTunedModel(array $parameters, array $options = []) Perform a PATCH request to update a fine-tuned model.
+ * @method ResponseInterface|null archiveModel(array $parameters) Perform a POST request to archive a specific model.
+ * @method ResponseInterface|null unarchiveModel(array $parameters) Perform a DELETE request to unarchive a specific model.
+ * @method ResponseInterface|null uploadFile(array $parameters, array $options = []) Perform a POST request to upload a file.
+ * @method ResponseInterface|null listFiles() Perform a GET request to list all files.
+ * @method ResponseInterface|null retrieveFile(array $parameters) Perform a GET request to retrieve a specific file.
+ * @method ResponseInterface|null deleteFile(array $parameters) Perform a DELETE request to delete a specific file.
+ * @method ResponseInterface|null listFineTuningJobs() Perform a GET request to list all fine-tuning jobs.
+ * @method ResponseInterface|null retrieveFineTuningJob(array $parameters) Perform a GET request to retrieve a specific fine-tuning job.
+ * @method ResponseInterface|null cancelFineTuningJob(array $parameters) Perform a POST request to cancel a specific fine-tuning job.
+ * @method ResponseInterface|null startFineTuningJob(array $parameters) Perform a POST request to start a specific fine-tuning job.
+ * @method ResponseInterface|null createFineTuningJob(array $parameters, array $options = []) Perform a POST request to create a fine-tuning job.
+ * @method ResponseInterface|null createChatCompletion(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create a chat completion.
+ * @method ResponseInterface|null createFimCompletion(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create a FIM completion.
+ * @method ResponseInterface|null createAgentsCompletion(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create an agents completion.
+ * @method ResponseInterface|null createEmbedding(array $parameters, array $options = []) Perform a POST request to create an embedding.
  */
 class MistralAI
 {
     /**
-     * The HTTP client instance used for sending requests.
+     * Constructs a new instance of the MistralAI client.
+     *
+     * @param RequestFactoryInterface $requestFactory The PSR-17 request factory.
+     * @param StreamFactoryInterface  $streamFactory  The PSR-17 stream factory.
+     * @param UriFactoryInterface     $uriFactory     The PSR-17 URI factory.
+     * @param ClientInterface         $httpClient     The PSR-18 HTTP client.
+     * @param string                  $apiKey         Your MistralAI API key.
+     * @param string                  $origin         Custom API origin (hostname).
+     * @param string                  $apiVersion     Custom API version.
      */
-    private ClientInterface $httpClient;
-
-    /**
-     * The PSR-17 request factory instance used for creating requests.
-     */
-    private RequestFactoryInterface $requestFactory;
-
-    /**
-     * The PSR-17 stream factory instance used for creating request bodies.
-     */
-    private StreamFactoryInterface $streamFactory;
-
-    /**
-     * The PSR-17 URI factory instance used for creating URIs.
-     */
-    private UriFactoryInterface $uriFactory;
-
-    /**
-     * MistralAI API Key
-     */
-    public string $apiKey = '';
-
-    /**
-     * MistralAI API Origin (defaults to api.mistral.ai)
-     */
-    public string $origin = '';
-
-    /**
-     * MistralAI API Version (defaults to v1)
-     */
-    public string $apiVersion = '';
-
     public function __construct(
-        RequestFactoryInterface $requestFactory,
-        StreamFactoryInterface $streamFactory,
-        UriFactoryInterface $uriFactory,
-        ClientInterface $httpClient,
+        private readonly RequestFactoryInterface $requestFactory,
+        private readonly StreamFactoryInterface $streamFactory,
+        private readonly UriFactoryInterface $uriFactory,
+        private readonly ClientInterface $httpClient,
         #[SensitiveParameter]
-        string $apiKey,
-        string $origin = '',
-        string $apiVersion = ''
-    ) {
-        $this->requestFactory = $requestFactory;
-        $this->streamFactory = $streamFactory;
-        $this->uriFactory = $uriFactory;
-        $this->httpClient = $httpClient;
-        $this->apiKey = $apiKey;
-        $this->origin = $origin;
-        $this->apiVersion = $apiVersion;
-    }
+        private readonly string $apiKey,
+        private readonly string $origin = '',
+        private readonly string $apiVersion = ''
+    ) {}
 
     /**
      * Magic method to call the MistralAI API endpoints.
@@ -105,18 +87,20 @@ class MistralAI
      * @param string $key The endpoint method.
      * @param array $args The arguments for the endpoint method.
      *
-     * @return ResponseInterface The API response.
+     * @return ResponseInterface|null The API response or null if streaming.
      *
-     * @throws MistralAIException If the API returns an error (HTTP status code >= 400).
+     * @throws MistralAIException       If the API returns an error.
+     * @throws InvalidArgumentException If the parameters are invalid.
+     * @throws RandomException
      */
-    public function __call(string $key, array $args): ResponseInterface
+    public function __call(string $key, array $args): ?ResponseInterface
     {
         $endpoint = MistralAIURLBuilder::getEndpoint($key);
         $httpMethod = $endpoint['method'];
 
-        [$parameter, $opts] = $this->extractCallArguments($args);
+        [$parameters, $opts, $streamCallback] = $this->extractCallArguments($args);
 
-        return $this->callAPI($httpMethod, $key, $parameter, $opts);
+        return $this->callAPI($httpMethod, $key, $parameters, $opts, $streamCallback);
     }
 
     /**
@@ -124,100 +108,208 @@ class MistralAI
      *
      * @param array $args The input arguments.
      *
-     * @return array An array containing the extracted parameter and options.
+     * @return array An array containing the extracted parameters, options, and stream callback.
+     *
+     * @throws InvalidArgumentException If the first argument is not an array.
      */
     private function extractCallArguments(array $args): array
     {
-        $parameter = null;
+        $parameters = [];
         $opts = [];
+        $streamCallback = null;
 
         if (!isset($args[0])) {
-            return [$parameter, $opts];
+            return [$parameters, $opts, $streamCallback];
         }
 
-        if (\is_string($args[0])) {
-            $parameter = $args[0];
+        if (\is_array($args[0])) {
+            $parameters = $args[0];
 
             if (isset($args[1]) && \is_array($args[1])) {
                 $opts = $args[1];
+
+                if (isset($args[2]) && \is_callable($args[2])) {
+                    $streamCallback = $args[2];
+                }
+            } elseif (isset($args[1]) && \is_callable($args[1])) {
+                $streamCallback = $args[1];
             }
-        } elseif (\is_array($args[0])) {
-            $opts = $args[0];
+        } else {
+            throw new InvalidArgumentException('First argument must be an array of parameters.');
         }
 
-        return [$parameter, $opts];
+        return [$parameters, $opts, $streamCallback];
     }
 
     /**
-     * Calls the MistralAI API with the provided method, key, parameter, and options.
+     * Calls the MistralAI API with the provided method, key, parameters, and options.
      *
      * @param string $method The HTTP method for the request.
      * @param string $key The API endpoint key.
-     * @param string|null $parameter An optional parameter for the request.
-     * @param array $opts The options for the request.
+     * @param array $parameters Parameters for URL placeholders.
+     * @param array $opts The options for the request body or query.
+     * @param callable|null $streamCallback Callback function to handle streaming data.
      *
-     * @return ResponseInterface The API response.
+     * @return ResponseInterface|null The API response or null if streaming.
      *
-     * @throws MistralAIException If the API returns an error (HTTP status code >= 400).
+     * @throws MistralAIException If the API returns an error.
+     * @throws RandomException
      */
-    private function callAPI(string $method, string $key, ?string $parameter = null, array $opts = []): ResponseInterface
-    {
-        return $this->sendRequest(
-            MistralAIURLBuilder::createUrl($this->uriFactory, $key, $parameter, $this->origin, $this->apiVersion),
-            $method,
-            $opts
+    private function callAPI(
+        string $method,
+        string $key,
+        array $parameters = [],
+        array $opts = [],
+        ?callable $streamCallback = null
+    ): ?ResponseInterface {
+        $uri = MistralAIURLBuilder::createUrl(
+            $this->uriFactory,
+            $key,
+            $parameters,
+            $this->origin,
+            $this->apiVersion
         );
+
+        return $this->sendRequest($uri, $method, $opts, $streamCallback);
     }
 
     /**
      * Sends an HTTP request to the MistralAI API and returns the response.
      *
-     * @param UriInterface $uri The URL to send the request to.
-     * @param string $method The HTTP method to use (e.g., 'GET', 'POST', etc.).
-     * @param array $params An associative array of parameters to send with the request (optional).
+     * @param UriInterface $uri The URI to send the request to.
+     * @param string $method The HTTP method to use.
+     * @param array $params Parameters to include in the request body.
+     * @param callable|null $streamCallback Callback function to handle streaming data.
      *
-     * @return ResponseInterface The response from the MistralAI API.
+     * @return ResponseInterface|null The response from the MistralAI API or null if streaming.
      *
-     * @throws MistralAIException If the API returns an error (HTTP status code >= 400).
-     * @throws Exception
+     * @throws MistralAIException If the API returns an error.
+     * @throws RandomException
      */
-    private function sendRequest(UriInterface $uri, string $method, array $params = []): ResponseInterface
-    {
+    private function sendRequest(
+        UriInterface $uri,
+        string $method,
+        array $params = [],
+        ?callable $streamCallback = null
+    ): ?ResponseInterface {
         $request = $this->requestFactory->createRequest($method, $uri);
-
-        $headers = $this->createHeaders();
+        $isMultipart = $this->isMultipartRequest($params);
+        $boundary = $isMultipart ? $this->generateMultipartBoundary() : null;
+        $headers = $this->createHeaders($isMultipart, $boundary);
         $request = $this->applyHeaders($request, $headers);
 
-        $body = $this->createJsonBody($params);
+        $body = $isMultipart
+            ? $this->createMultipartStream($params, $boundary)
+            : $this->createJsonBody($params);
 
-        if (!empty($body)) {
+        if ($body !== '') {
             $request = $request->withBody($this->streamFactory->createStream($body));
         }
 
         try {
+            if ($streamCallback !== null && ($params['stream'] ?? false) === true) {
+                $this->handleStreamingResponse($request, $streamCallback);
+
+                return null;
+            }
+
             $response = $this->httpClient->sendRequest($request);
 
-            // Check if the response has a non-200 status code (error)
             if ($response->getStatusCode() >= 400) {
                 throw new MistralAIException($response->getBody()->getContents(), $response->getStatusCode());
             }
-        } catch (ClientExceptionInterface $e) {
-            throw new MistralAIException($e->getMessage(), $e->getCode(), $e->getPrevious());
-        }
 
-        return $response;
+            return $response;
+        } catch (ClientExceptionInterface $e) {
+            throw new MistralAIException($e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Handles a streaming response from the API.
+     *
+     * @param RequestInterface $request        The request to send.
+     * @param callable         $streamCallback The callback function to handle streaming data.
+     *
+     * @return void
+     *
+     * @throws MistralAIException If an error occurs during streaming.
+     */
+    private function handleStreamingResponse(RequestInterface $request, callable $streamCallback): void
+    {
+        try {
+            $response = $this->httpClient->sendRequest($request);
+            $statusCode = $response->getStatusCode();
+
+            if ($statusCode >= 400) {
+                throw new MistralAIException($response->getBody()->getContents(), $statusCode);
+            }
+
+            $body = $response->getBody();
+            $buffer = '';
+
+            while (!$body->eof()) {
+                $chunk = $body->read(8192);
+                $buffer .= $chunk;
+
+                while (($newlinePos = \strpos($buffer, "\n")) !== false) {
+                    $line = \substr($buffer, 0, $newlinePos);
+                    $buffer = \substr($buffer, $newlinePos + 1);
+
+                    $data = \trim($line);
+
+                    if ($data === '') {
+                        continue;
+                    }
+
+                    if ($data === 'data: [DONE]') {
+                        return;
+                    }
+
+                    if (\str_starts_with($data, 'data: ')) {
+                        $json = \substr($data, 6);
+
+                        try {
+                            $decoded = \json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+                            $streamCallback($decoded);
+                        } catch (JsonException $e) {
+                            throw new MistralAIException('JSON decode error: ' . $e->getMessage(), 0, $e);
+                        }
+                    }
+                }
+            }
+        } catch (ClientExceptionInterface $e) {
+            throw new MistralAIException($e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Generates a unique multipart boundary string.
+     *
+     * @return string The generated multipart boundary string.
+     *
+     * @throws RandomException
+     */
+    private function generateMultipartBoundary(): string
+    {
+        return '----MistralAI' . \bin2hex(\random_bytes(16));
     }
 
     /**
      * Creates the headers for an API request.
      *
+     * @param bool        $isMultipart Indicates whether the request is multipart.
+     * @param string|null $boundary    The multipart boundary string, if applicable.
+     *
      * @return array An associative array of headers.
      */
-    private function createHeaders(): array
+    private function createHeaders(bool $isMultipart, ?string $boundary): array
     {
         return [
-            'authorization' => 'Bearer ' . $this->apiKey,
-            'content-type' => 'application/json',
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => $isMultipart
+                ? "multipart/form-data; boundary={$boundary}"
+                : 'application/json',
         ];
     }
 
@@ -225,7 +317,7 @@ class MistralAI
      * Applies the headers to the given request.
      *
      * @param RequestInterface $request The request to apply headers to.
-     * @param array $headers An associative array of headers to apply.
+     * @param array            $headers An associative array of headers to apply.
      *
      * @return RequestInterface The request with headers applied.
      */
@@ -239,19 +331,68 @@ class MistralAI
     }
 
     /**
-     * Creates a JSON encoded body string from the given parameters.
+     * Creates a JSON-encoded body string from the given parameters.
      *
      * @param array $params An associative array of parameters to encode as JSON.
      *
-     * @return string The JSON encoded body string, or an empty string if encoding fails.
+     * @return string The JSON-encoded body string.
+     *
+     * @throws MistralAIException If JSON encoding fails.
      */
     private function createJsonBody(array $params): string
     {
-        try {
-            return !empty($params) ? \json_encode($params, JSON_THROW_ON_ERROR) : '';
-        } catch (JsonException $e) {
-            // Fallback to an empty string if encoding fails
+        if (empty($params)) {
             return '';
         }
+
+        try {
+            return \json_encode($params, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
+            throw new MistralAIException('JSON encode error: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Creates a multipart stream for sending files in a request.
+     *
+     * @param array  $params   An associative array of parameters to send with the request.
+     * @param string $boundary A string used as a boundary to separate parts of the multipart stream.
+     *
+     * @return string The multipart stream as a string.
+     */
+    private function createMultipartStream(array $params, string $boundary): string
+    {
+        $multipartStream = '';
+
+        foreach ($params as $key => $value) {
+            $multipartStream .= "--{$boundary}\r\n";
+            $multipartStream .= "Content-Disposition: form-data; name=\"{$key}\"";
+
+            if ($key === 'file' && \is_string($value) && \file_exists($value)) {
+                $filename = \basename($value);
+                $fileContents = \file_get_contents($value);
+                $multipartStream .= "; filename=\"{$filename}\"\r\n";
+                $multipartStream .= "Content-Type: application/octet-stream\r\n\r\n";
+                $multipartStream .= "{$fileContents}\r\n";
+            } else {
+                $multipartStream .= "\r\n\r\n{$value}\r\n";
+            }
+        }
+
+        $multipartStream .= "--{$boundary}--\r\n";
+
+        return $multipartStream;
+    }
+
+    /**
+     * Determines if a request is a multipart request based on the provided parameters.
+     *
+     * @param array $params An associative array of parameters to check.
+     *
+     * @return bool True if the request is a multipart request, false otherwise.
+     */
+    private function isMultipartRequest(array $params): bool
+    {
+        return isset($params['file']);
     }
 }

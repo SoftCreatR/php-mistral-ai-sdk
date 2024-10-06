@@ -19,12 +19,17 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Update a fine-tuned model's metadata.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * Update the name or description of a fine-tuned model.
+ *
+ * In this example, we update the name and description of a fine-tuned model.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: update_ft_model_v1_fine_tuning_models__model_id__patch
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('updateFineTunedModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123'], [
+    'name' => 'Updated Fine-Tuned Model Name',
+    'description' => 'This is an updated description for the fine-tuned model.',
+]);

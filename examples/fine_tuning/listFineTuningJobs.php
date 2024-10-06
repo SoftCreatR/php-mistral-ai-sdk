@@ -19,12 +19,11 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: List all fine-tuning jobs.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * This endpoint retrieves a list of all fine-tuning jobs associated with your account.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: list_fine_tuning_jobs_v1_fine_tuning_jobs_get
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('listFineTuningJobs');

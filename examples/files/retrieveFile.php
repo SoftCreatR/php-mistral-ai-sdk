@@ -19,12 +19,14 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Retrieve a specific file by its ID.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * ID of the file to retrieve.
+ *
+ * In this example, we retrieve a file with ID 'file-abc123'.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: retrieve_file_v1_files__file_id__get
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('retrieveFile', ['file_id' => 'file-abc123']);

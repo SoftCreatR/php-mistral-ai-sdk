@@ -19,12 +19,14 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Archive a fine-tuned model.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * Archive a fine-tuned model to hide it from the list of models.
+ *
+ * In this example, we archive a fine-tuned model with the given ID.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: archive_model_v1_fine_tuning_models__model_id__archive_post
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('archiveModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123']);

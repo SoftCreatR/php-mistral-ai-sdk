@@ -18,13 +18,26 @@
 
 require_once __DIR__ . '/../MistralAIFactory.php';
 
-// Call the createChatCompletion method with options.
+/**
+ * Example: Create a chat completion using the 'mistral-small-latest' model.
+ *
+ * Model Description:
+ * ID of the model to use. You can use the List Available Models API to see all of your available models,
+ * or see the Model Overview for model descriptions.
+ *
+ * In this example, we use 'mistral-small-latest' as the model.
+ *
+ * OpenAPI Specification Reference:
+ * - Operation ID: create_chat_completion_v1_chat_completions_post
+ */
 MistralAIFactory::request('createChatCompletion', [
-    'model' => 'mistral-tiny',
+    'model' => 'mistral-small-latest',
     'messages' => [
         [
             'role' => 'user',
-            'content' => 'What is the best French cheese?',
+            'content' => 'Who is the best French painter? Answer in one short sentence.',
         ],
     ],
+    'temperature' => 0.7,
+    'top_p' => 1,
 ]);

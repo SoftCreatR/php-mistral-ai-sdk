@@ -1,0 +1,5 @@
+data: {"choices":[{"delta":{"content":"Once upon a time, "}}]}
+data: {"choices":[{"delta":{"content":"in a land far away, "}}]}
+data: {"choices":[{"delta":{"content":"there lived a brave knight named "}}]}
+data: {"choices":[{"delta":{"content":"Sir Alaric."}}]}
+data: [DONE]

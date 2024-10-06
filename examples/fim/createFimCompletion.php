@@ -19,12 +19,22 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Create a Fill-in-the-Middle (FIM) completion using the 'codestral-2405' model.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * ID of the model to use. Only compatible for now with:
+ *   - 'codestral-2405'
+ *   - 'codestral-latest'
+ *
+ * In this example, we use 'codestral-2405' as the model.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: create_fim_completion_v1_fim_completions_post
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('createFimCompletion', [
+    'model' => 'codestral-2405',
+    'prompt' => 'def',
+    'suffix' => 'return a + b',
+    'temperature' => 0.7,
+    'top_p' => 1,
+]);

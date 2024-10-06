@@ -18,11 +18,18 @@
 
 require_once __DIR__ . '/../MistralAIFactory.php';
 
-// Call the createEmbedding method with options.
+/**
+ * Example: Create embeddings using the 'mistral-embed' model.
+ *
+ * Model Description:
+ * ID of the model to use for generating embeddings.
+ *
+ * In this example, we use 'mistral-embed' as the model.
+ *
+ * OpenAPI Specification Reference:
+ * - Operation ID: create_embedding_v1_embeddings_post
+ */
 MistralAIFactory::request('createEmbedding', [
     'model' => 'mistral-embed',
-    'input' => [
-        'Hello',
-        'world',
-    ],
+    'input' => 'The quick brown fox jumps over the lazy dog.',
 ]);

@@ -1,0 +1,45 @@
+{
+  "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+  "auto_start": true,
+  "hyperparameters": {
+    "training_steps": 1,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.1,
+    "warmup_fraction": 0.05,
+    "epochs": 0,
+    "fim_ratio": 0.9
+  },
+  "model": "open-mistral-7b",
+  "status": "QUEUED",
+  "job_type": "string",
+  "created_at": 0,
+  "modified_at": 0,
+  "training_files": [
+    "497f6eca-6276-4993-bfeb-53cbbbba6f08"
+  ],
+  "validation_files": [],
+  "object": "job",
+  "fine_tuned_model": "string",
+  "suffix": "string",
+  "integrations": [
+    {
+      "type": "wandb",
+      "project": "string",
+      "name": "string",
+      "run_name": "string"
+    }
+  ],
+  "trained_tokens": 0,
+  "repositories": [],
+  "metadata": {
+    "expected_duration_seconds": 0,
+    "cost": 0,
+    "cost_currency": "string",
+    "train_tokens_per_step": 0,
+    "train_tokens": 0,
+    "data_tokens": 0,
+    "estimated_start_time": 0
+  },
+  "events": [],
+  "checkpoints": []
+}

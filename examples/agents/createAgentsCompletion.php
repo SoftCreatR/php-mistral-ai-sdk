@@ -19,12 +19,22 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Create an agents completion using a specific agent ID.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * The ID of the agent to use for this completion.
+ *
+ * In this example, we use 'agent-1234' as the agent ID.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: create_agents_completion_v1_agents_completions_post
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('createAgentsCompletion', [
+    'agent_id' => 'agent-1234', // Replace with your actual agent ID
+    'messages' => [
+        [
+            'role' => 'user',
+            'content' => 'Tell me a joke about cats.',
+        ],
+    ],
+]);

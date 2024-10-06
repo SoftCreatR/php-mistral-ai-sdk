@@ -19,12 +19,15 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Retrieve a specific model by its ID.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * ID of the model to retrieve. You can use the List Models API to see all of your available models,
+ * or see the Model Overview for model descriptions.
+ *
+ * In this example, we retrieve the 'mistral-small-latest' model.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: retrieve_model_v1_models__model_id__get
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('retrieveModel', ['model_id' => 'mistral-small-latest']);

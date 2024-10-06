@@ -19,12 +19,28 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Create a fine-tuning job.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * Creates a job that fine-tunes a specified model from a given dataset.
+ * The response includes details of the enqueued job including job status and the name of the fine-tuned models once complete.
+ *
+ * In this example, we create a fine-tuning job using the 'open-mistral-7b' model.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: create_fine_tuning_job_v1_fine_tuning_jobs_post
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('createFineTuningJob', [
+    'model' => 'open-mistral-7b',
+    'training_files' => [
+        [
+            'file_id' => 'file-abc123', // Replace with your actual training file ID
+            'weight' => 1,
+        ],
+    ],
+    'hyperparameters' => [
+        'learning_rate' => 0.0001,
+        'epochs' => 4,
+    ],
+    'suffix' => 'my-fine-tuned-model',
+]);

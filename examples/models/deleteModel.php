@@ -19,12 +19,14 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Delete a fine-tuned model.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * ID of the model to delete. Only fine-tuned models can be deleted.
+ *
+ * In this example, we delete a fine-tuned model with ID 'ft:open-mistral-7b:my-great-model:abc123'.
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: delete_model_v1_models__model_id__delete
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('deleteModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123']);

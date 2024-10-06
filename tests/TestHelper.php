@@ -21,37 +21,69 @@ namespace SoftCreatR\MistralAI\Tests;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
+use RuntimeException;
 
 class TestHelper
 {
     /**
-     * Get a private method of an object using Reflection.
+     * Retrieves a private or protected method from a class instance or class name.
      *
-     * @param object $instance The instance of the object.
-     * @param string $methodName The name of the private method.
+     * @param object|string $objectOrClass The object instance or class name.
+     * @param string        $methodName    The name of the method to access.
      *
-     * @return ReflectionMethod The private method.
+     * @return ReflectionMethod The reflection method instance, set to be accessible.
      *
      * @throws ReflectionException If the method does not exist.
      */
-    public static function getPrivateMethod(object $instance, string $methodName): ReflectionMethod
+    public static function getPrivateMethod(object|string $objectOrClass, string $methodName): ReflectionMethod
     {
-        $reflection = new ReflectionClass($instance);
-        $method = $reflection->getMethod($methodName);
-        $method->setAccessible(true);
-
-        return $method;
+        return (new ReflectionClass($objectOrClass))->getMethod($methodName);
     }
 
     /**
-     * Load the content of a response file for testing.
+     * Retrieves the private constructor of a class using reflection.
      *
-     * @param string $filename The name of the response file.
+     * @param string $className The fully qualified class name.
      *
-     * @return string The content of the response file.
+     * @return ReflectionMethod The reflection method instance representing the constructor.
+     *
+     * @throws ReflectionException If the class or constructor does not exist.
+     */
+    public static function getPrivateConstructor(string $className): ReflectionMethod
+    {
+        $reflection = new ReflectionClass($className);
+        $constructor = $reflection->getConstructor();
+
+        if ($constructor !== null) {
+            return $constructor;
+        }
+
+        throw new ReflectionException("Constructor does not exist for class {$className}.");
+    }
+
+    /**
+     * Loads the contents of a response file for testing purposes.
+     *
+     * @param string $filename The filename to load from the 'fixtures/responses' directory.
+     *
+     * @return string The contents of the response file.
+     *
+     * @throws RuntimeException If the file cannot be found or read.
      */
     public static function loadResponseFromFile(string $filename): string
     {
-        return \file_get_contents(__DIR__ . '/responses/' . $filename);
+        $filePath = __DIR__ . '/fixtures/responses/' . $filename;
+
+        if (!\file_exists($filePath)) {
+            throw new RuntimeException("Response file not found: {$filePath}");
+        }
+
+        $content = \file_get_contents($filePath);
+
+        if ($content === false) {
+            throw new RuntimeException("Unable to read response file: {$filePath}");
+        }
+
+        return $content;
     }
 }

@@ -19,12 +19,17 @@
 require_once __DIR__ . '/../MistralAIFactory.php';
 
 /**
- * Example: List all available models.
+ * Example: Upload a file for fine-tuning purposes.
  *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
+ * Model Description:
+ * Upload a file that contains document(s) to be used across various endpoints/features.
+ * The file must be a valid JSON Lines (.jsonl) file, where each line is a JSON object
+ * with the keys "prompt" and "completion".
  *
  * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
+ * - Operation ID: upload_file_v1_files_post
  */
-MistralAIFactory::request('listModels');
+MistralAIFactory::request('uploadFile', [
+    'file' => '/path/to/your/training_data.jsonl', // Replace with the actual file path
+    'purpose' => 'fine-tune',
+]);
