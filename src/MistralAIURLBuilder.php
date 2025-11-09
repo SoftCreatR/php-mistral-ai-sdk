@@ -77,6 +77,9 @@ final class MistralAIURLBuilder
 
         // Embeddings
         'createEmbedding' => ['method' => self::HTTP_METHOD_POST,   'path' => '/embeddings'],
+
+        // Audio
+        'createAudioTranscription' => ['method' => self::HTTP_METHOD_POST, 'path' => '/audio/transcriptions'],
     ];
 
     /**

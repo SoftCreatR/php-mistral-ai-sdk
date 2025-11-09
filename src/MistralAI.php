@@ -56,6 +56,7 @@ use const JSON_THROW_ON_ERROR;
  * @method ResponseInterface|null createFimCompletion(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create a FIM completion.
  * @method ResponseInterface|null createAgentsCompletion(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create an agents completion.
  * @method ResponseInterface|null createEmbedding(array $parameters, array $options = []) Perform a POST request to create an embedding.
+ * @method ResponseInterface|null createAudioTranscription(array $parameters, array $options = [], ?\Closure $callback = null) Perform a POST request to create an audio transcription.
  */
 class MistralAI
 {

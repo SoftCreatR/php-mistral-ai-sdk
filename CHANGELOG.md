@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **New Endpoints**:
+    - **Audio**:
+        - `createAudioTranscription`: Create transcriptions from audio files using the Mistral audio transcription API.
+            - Supports multipart file uploads for audio files.
+            - Supports streaming responses with optional callback mechanism.
+            - Compatible with various audio formats as supported by the Mistral API.
+
+- **New Tests**:
+    - Added comprehensive test coverage for the `createAudioTranscription` method.
+    - Created test fixture for audio transcription responses (`tests/fixtures/responses/createAudioTranscription.json`).
+
+- **Documentation Updates**:
+    - Updated README.md to include the new Audio Transcription endpoint in the "Supported Methods" section.
+    - Added method signature and documentation for `createAudioTranscription`.
+
 ## [2.0.0] - 2024-10-06
 
 ### Removed

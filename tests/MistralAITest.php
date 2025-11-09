@@ -668,6 +668,27 @@ class MistralAITest extends TestCase
     }
 
     /**
+     * Tests that the createAudioTranscription method handles API calls correctly.
+     *
+     * @throws Exception
+     */
+    public function testCreateAudioTranscription(): void
+    {
+        $filePath = __DIR__ . '/fixtures/dummyAudio.mp3';
+        \file_put_contents($filePath, 'Dummy audio content');
+
+        $this->testApiCall(
+            fn() => $this->mistralAI->createAudioTranscription([
+                'file' => $filePath,
+                'model' => 'mistral-whisper',
+            ]),
+            'createAudioTranscription.json'
+        );
+
+        \unlink($filePath);
+    }
+
+    /**
      * Tests the 'extractCallArguments' method with various input scenarios.
      *
      * Ensures that the method correctly extracts parameters, options, and the stream callback from the provided arguments.

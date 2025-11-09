@@ -153,6 +153,10 @@ For more details on how to use each endpoint, refer to the [Mistral API document
 -   [Create Agents Completion](https://docs.mistral.ai/api/#tag/agents/operation/agents_completion_v1_agents_completions_post) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/agents/createAgentsCompletion.php)
     -   `createAgentsCompletion(array $options = [])`
 
+### Audio
+-   [Create Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
+    -   `createAudioTranscription(array $options = [], callable $streamCallback = null)`
+
 ## Changelog
 
 For a detailed list of changes and updates, please refer to the [CHANGELOG.md](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/CHANGELOG.md) file. We adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and document notable changes for each release.
