@@ -677,13 +677,22 @@ class MistralAITest extends TestCase
         $filePath = __DIR__ . '/fixtures/dummyAudio.mp3';
         \file_put_contents($filePath, 'Dummy audio content');
 
-        $this->testApiCall(
-            fn() => $this->mistralAI->createAudioTranscription([
-                'file' => $filePath,
-                'model' => 'mistral-whisper',
-            ]),
-            'createAudioTranscription.json'
-        );
+        $this->sendRequestMock(function (RequestInterface $request) use ($filePath) {
+            $body = (string)$request->getBody();
+            $this->assertStringContainsString('multipart/form-data', $request->getHeaderLine('Content-Type'));
+            $this->assertStringContainsString('Dummy audio content', $body);
+            $this->assertStringContainsString(\basename($filePath), $body);
+
+            return new Response(200, [], TestHelper::loadResponseFromFile('createAudioTranscription.json'));
+        });
+
+        // Pass file in options (second parameter), not in parameters
+        $response = $this->mistralAI->createAudioTranscription([], [
+            'file' => $filePath,
+            'model' => 'mistral-whisper',
+        ]);
+
+        $this->assertEquals(200, $response->getStatusCode());
 
         \unlink($filePath);
     }

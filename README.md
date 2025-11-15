@@ -85,16 +85,38 @@ $streamCallback = static function ($data) {
     }
 };
 
-$mistral->createChatCompletion([
-    'model' => 'mistral-small-latest',
-    'messages' => [
-        [
-            'role' => 'user',
-            'content' => 'Tell me a story about a brave knight.',
+$mistral->createChatCompletion(
+    [],
+    [
+        'model' => 'mistral-small-latest',
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => 'Tell me a story about a brave knight.',
+            ],
         ],
+        'stream' => true,
     ],
-    'stream' => true,
-], $streamCallback);
+    $streamCallback
+);
+```
+
+### Audio Transcription Example
+
+You can transcribe audio files using the audio transcription endpoint:
+
+```php
+$response = $mistral->createAudioTranscription([], [
+    'file' => '/path/to/audio.mp3',
+    'model' => 'mistral-whisper',
+    'language' => 'en', // optional
+]);
+
+// Process the transcription response
+if ($response->getStatusCode() === 200) {
+    $result = json_decode($response->getBody()->getContents(), true);
+    echo $result['text']; // The transcribed text
+}
 ```
 
 For more details on how to use each endpoint, refer to the [Mistral API documentation](https://docs.mistral.ai), and the [examples](https://github.com/SoftCreatR/php-mistral-ai-sdk/tree/main/examples) provided in the repository.
@@ -155,7 +177,7 @@ For more details on how to use each endpoint, refer to the [Mistral API document
 
 ### Audio
 -   [Create Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
-    -   `createAudioTranscription(array $options = [], callable $streamCallback = null)`
+    -   `createAudioTranscription(array $parameters = [], array $options = [], callable $streamCallback = null)`
 
 ## Changelog
 
