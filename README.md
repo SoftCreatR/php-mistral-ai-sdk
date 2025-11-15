@@ -176,7 +176,7 @@ For more details on how to use each endpoint, refer to the [Mistral API document
     -   `createAgentsCompletion(array $options = [])`
 
 ### Audio
--   [Create Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
+-   [Create Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/audio/createAudioTranscription.php)
     -   `createAudioTranscription(array $parameters = [], array $options = [], callable $streamCallback = null)`
 
 ## Changelog
