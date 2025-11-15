@@ -108,7 +108,7 @@ You can transcribe audio files using the audio transcription endpoint:
 ```php
 $response = $mistral->createAudioTranscription([], [
     'file' => '/path/to/audio.mp3',
-    'model' => 'mistral-whisper',
+    'model' => 'voxtral-mini-latest',
     'language' => 'en', // optional
 ]);
 

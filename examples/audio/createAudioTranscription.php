@@ -32,7 +32,7 @@ require_once __DIR__ . '/../MistralAIFactory.php';
  */
 MistralAIFactory::request('createAudioTranscription', [
     'file' => '/path/to/your/audio.mp3', // Replace with the actual audio file path
-    'model' => 'mistral-whisper',
+    'model' => 'voxtral-mini-latest',
     'language' => 'en', // Optional: Language of the audio (e.g., 'en', 'fr', 'es')
     'temperature' => 0.0, // Optional: Temperature for controlling randomness (0.0 - 1.0)
 ]);
