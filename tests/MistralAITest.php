@@ -689,7 +689,7 @@ class MistralAITest extends TestCase
         // Pass file in options (second parameter), not in parameters
         $response = $this->mistralAI->createAudioTranscription([], [
             'file' => $filePath,
-            'model' => 'mistral-whisper',
+            'model' => 'voxtral-mini-latest',
         ]);
 
         $this->assertEquals(200, $response->getStatusCode());

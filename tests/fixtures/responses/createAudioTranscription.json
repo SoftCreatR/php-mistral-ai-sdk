@@ -1,34 +1,12 @@
 {
-  "model": "mistral-whisper",
+  "model": "voxtral-mini-latest",
   "text": "This is a test audio transcription.",
   "language": "en",
-  "segments": [
-    {
-      "id": 0,
-      "start": 0.0,
-      "end": 2.5,
-      "text": "This is a test",
-      "tokens": [1234, 5678, 9012, 3456],
-      "temperature": 0.0,
-      "avg_logprob": -0.25,
-      "compression_ratio": 1.2,
-      "no_speech_prob": 0.01
-    },
-    {
-      "id": 1,
-      "start": 2.5,
-      "end": 4.0,
-      "text": " audio transcription.",
-      "tokens": [7890, 1234, 5678],
-      "temperature": 0.0,
-      "avg_logprob": -0.22,
-      "compression_ratio": 1.1,
-      "no_speech_prob": 0.02
-    }
-  ],
+  "segments": [],
   "usage": {
-    "prompt_tokens": 0,
-    "completion_tokens": 15,
-    "total_tokens": 15
+    "prompt_audio_seconds": 203,
+    "prompt_tokens": 4,
+    "completion_tokens": 635,
+    "total_tokens": 3264
   }
 }
