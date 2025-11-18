@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024, Sascha Greuel and Contributors
+ * Copyright (c) 2024-present, Sascha Greuel and Contributors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,7 +29,16 @@ require_once __DIR__ . '/../MistralAIFactory.php';
  * OpenAPI Specification Reference:
  * - Operation ID: upload_file_v1_files_post
  */
-MistralAIFactory::request('uploadFile', [
-    'file' => '/path/to/your/training_data.jsonl', // Replace with the actual file path
+$fixturePath = __DIR__ . '/fixtures/mydata.jsonl';
+
+$payload = [
     'purpose' => 'fine-tune',
-]);
+];
+
+if (\file_exists($fixturePath)) {
+    $payload['file'] = $fixturePath;
+} else {
+    $payload['file'] = '/path/to/your/training_data.jsonl';
+}
+
+MistralAIFactory::request('uploadFile', $payload);

@@ -1,6 +1,6 @@
 # Mistral API Wrapper for PHP
 
-[![Build](https://img.shields.io/github/actions/workflow/status/SoftCreatR/php-mistral-ai-sdk/.github/workflows/create-release.yml?branch=main)](https://github.com/SoftCreatR/php-mistral-ai-sdk/actions/workflows/create-release.yml) [![Latest Release](https://img.shields.io/packagist/v/SoftCreatR/php-mistral-ai-sdk?color=blue&label=Latest%20Release)](https://packagist.org/packages/softcreatr/php-mistral-ai-sdk) [![ISC licensed](https://img.shields.io/badge/license-ISC-blue.svg)](./LICENSE.md) [![Plant Tree](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Plant%20Tree&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Fsoftcreatr%2Ftrees)](https://ecologi.com/softcreatr?r=61212ab3fc69b8eb8a2014f4) [![Codecov branch](https://img.shields.io/codecov/c/github/SoftCreatR/php-mistral-ai-sdk)](https://codecov.io/gh/SoftCreatR/php-mistral-ai-sdk) [![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability-percentage/SoftCreatR/php-mistral-ai-sdk)](https://codeclimate.com/github/SoftCreatR/php-mistral-ai-sdk)
+[![Build](https://img.shields.io/github/actions/workflow/status/SoftCreatR/php-mistral-ai-sdk/.github/workflows/create-release.yml?branch=main)](https://github.com/SoftCreatR/php-mistral-ai-sdk/actions/workflows/create-release.yml) [![Latest Release](https://img.shields.io/packagist/v/SoftCreatR/php-mistral-ai-sdk?color=blue&label=Latest%20Release)](https://packagist.org/packages/softcreatr/php-mistral-ai-sdk) [![ISC licensed](https://img.shields.io/badge/license-ISC-blue.svg)](./LICENSE.md) [![Plant Tree](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Plant%20Tree&query=%24.total&url=https%3A%2F%2Fpublic.ecologi.com%2Fusers%2Fsoftcreatr%2Ftrees)](https://ecologi.com/softcreatr?r=61212ab3fc69b8eb8a2014f4) [![Codecov branch](https://img.shields.io/codecov/c/github/SoftCreatR/php-mistral-ai-sdk)](https://codecov.io/gh/SoftCreatR/php-mistral-ai-sdk) [![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability-percentage/SoftCreatR/php-mistral-ai-sdk)](https://codeclimate.com/github/SoftCreatR/php-mistral-ai-sdk)
 
 This PHP library provides a simple wrapper for the Mistral API, allowing you to easily integrate the Mistral API into your PHP projects.
 
@@ -51,10 +51,14 @@ $uriFactory = new YourChosenUriFactory();
 $mistral = new MistralAI($requestFactory, $streamFactory, $uriFactory, $httpClient, $apiKey);
 ```
 
-Now you can call any supported MistralAI API endpoint using the magic method `__call`:
+Now you can call any supported MistralAI API endpoint using the magic method `__call`.
+The first array argument is reserved for URL/path parameters. If an endpoint has
+no placeholders you can either provide your request payload directly as the
+first argument or use the optional second `$options` array. The examples below
+use the `$options` argument to make the intent explicit:
 
 ```php
-$response = $mistral->createChatCompletion([
+$response = $mistral->createChatCompletion([], [
     'model' => 'mistral-tiny',
     'messages' => [
         [
@@ -85,7 +89,7 @@ $streamCallback = static function ($data) {
     }
 };
 
-$mistral->createChatCompletion([
+$mistral->createChatCompletion([], [
     'model' => 'mistral-small-latest',
     'messages' => [
         [
@@ -97,61 +101,110 @@ $mistral->createChatCompletion([
 ], $streamCallback);
 ```
 
+When an endpoint requires query-string parameters in addition to a JSON body
+(for example, promoting an agent to a specific version), include them via the
+reserved `query` key inside the `$options` array: `['query' => ['version' => '2.0.0']]`.
+
 For more details on how to use each endpoint, refer to the [Mistral API documentation](https://docs.mistral.ai), and the [examples](https://github.com/SoftCreatR/php-mistral-ai-sdk/tree/main/examples) provided in the repository.
+
+### Example Coverage
+
+Every documented endpoint ships with a runnable script under `examples/`. Newly added directories include `examples/audio`, `examples/batch`, `examples/agents_beta`, `examples/conversations`, `examples/libraries` (and `examples/libraries/documents`), `examples/classifiers`, and `examples/ocr`, covering the latest transcription, batch, agents (beta), conversations (beta), knowledge libraries, moderation/classification, and OCR APIs.
 
 ## Supported Methods
 
 ### Chat Completions
--   [Create Chat Completion](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/chat/createChatCompletion.php)
-    -   `createChatCompletion(array $options = [], callable $streamCallback = null)`
+-   [Create Chat Completion](https://docs.mistral.ai/api/endpoint/chat) – [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/chat/createChatCompletion.php)
+    -   `createChatCompletion(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+
+### Audio Transcriptions
+-   [Create Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
+    -   `createAudioTranscription(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+-   [Stream Audio Transcription](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
+    -   `createAudioTranscriptionStream(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
 
 ### Embeddings
--   [Create Embedding](https://docs.mistral.ai/api/#tag/embeddings/operation/embeddings_v1_embeddings_post) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/embeddings/createEmbedding.php)
-    -   `createEmbedding(array $options = [])`
+-   [Create Embedding](https://docs.mistral.ai/api/endpoint/embeddings) – [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/embeddings/createEmbedding.php)
+    -   `createEmbedding(array $parameters = [], array $options = [])`
 
 ### Models
--   [List Models](https://docs.mistral.ai/api/#tag/models/operation/list_models_v1_models_get) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/listModels.php)
-    -   `listModels()`
--   [Retrieve Model](https://docs.mistral.ai/api/#tag/models/operation/retrieve_model_v1_models__model_id__get) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/retrieveModel.php)
-    -   `retrieveModel(array $parameters = [])`
--   [Delete Model](https://docs.mistral.ai/api/#tag/models/operation/delete_model_v1_models__model_id__delete) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/deleteModel.php)
-    -   `deleteModel(array $parameters = [])`
--   [Update Fine-Tuned Model](https://docs.mistral.ai/api/#tag/models/operation/jobs_api_routes_fine_tuning_update_fine_tuned_model) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/updateFineTunedModel.php)
-    -   `updateFineTunedModel(array $parameters = [])`
--   [Archive Model](https://docs.mistral.ai/api/#tag/models/operation/jobs_api_routes_fine_tuning_archive_fine_tuned_model) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/archiveModel.php)
-    -   `archiveModel(array $parameters = [])`
--   [Unarchive Model](https://docs.mistral.ai/api/#tag/models/operation/jobs_api_routes_fine_tuning_unarchive_fine_tuned_model) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/models/unarchiveModel.php)
-    -   `unarchiveModel(array $parameters = [])`
+-   [List Models](https://docs.mistral.ai/api/endpoint/models)
+    -   `listModels(array $parameters = [], array $options = [])`
+-   [Retrieve / Delete Model](https://docs.mistral.ai/api/endpoint/models)
+    -   `retrieveModel(array $parameters = [], array $options = [])`
+    -   `deleteModel(array $parameters = [], array $options = [])`
+-   [Fine-tuned Model Lifecycle](https://docs.mistral.ai/api/endpoint/models)
+    -   `updateFineTunedModel(array $parameters = [], array $options = [])`
+    -   `archiveModel(array $parameters = [], array $options = [])`
+    -   `unarchiveModel(array $parameters = [], array $options = [])`
+
+### Batch Jobs
+-   [Batch Job APIs](https://docs.mistral.ai/api/endpoint/batch)
+    -   `listBatchJobs()`, `createBatchJob(array $parameters = [], array $options = [])`
+    -   `retrieveBatchJob(array $parameters = [])`, `cancelBatchJob(array $parameters = [])`
 
 ### Files
--   [Upload File](https://docs.mistral.ai/api/#tag/files/operation/files_api_routes_upload_file) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/files/uploadFile.php)
-    -   `uploadFile(array $options = [])`
--   [List Files](https://docs.mistral.ai/api/#tag/files/operation/files_api_routes_list_files) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/files/listFiles.php)
-    -   `listFiles()`
--   [Retrieve File](https://docs.mistral.ai/api/#tag/files/operation/files_api_routes_retrieve_file) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/files/retrieveFile.php)
-    -   `retrieveFile(array $parameters = [])`
--   [Delete File](https://docs.mistral.ai/api/#tag/files/operation/files_api_routes_delete_file) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/files/deleteFile.php)
-    -   `deleteFile(array $parameters = [])`
+-   [File Management](https://docs.mistral.ai/api/endpoint/files) – [Examples](https://github.com/SoftCreatR/php-mistral-ai-sdk/tree/main/examples/files)
+    -   `uploadFile(array $parameters = [], array $options = [])`
+    -   `listFiles(array $parameters = [], array $options = [])`
+    -   `retrieveFile(array $parameters = [], array $options = [])`
+    -   `deleteFile(array $parameters = [], array $options = [])`
+    -   `downloadFile(array $parameters = [], array $options = [])`
+    -   `retrieveFileSignedUrl(array $parameters = [], array $options = [])`
 
 ### Fine-Tuning Jobs
--   [List Fine-Tuning Jobs](https://docs.mistral.ai/api/#tag/fine-tuning/operation/jobs_api_routes_fine_tuning_get_fine_tuning_jobs) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/finetuning/listFineTuningJobs.php)
-    -   `listFineTuningJobs()`
--   [Retrieve Fine-Tuning Job](https://docs.mistral.ai/api/#tag/fine-tuning/operation/jobs_api_routes_fine_tuning_get_fine_tuning_job) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/finetuning/retrieveFineTuningJob.php)
-    -   `retrieveFineTuningJob(array $parameters = [])`
--   [Cancel Fine-Tuning Job](https://docs.mistral.ai/api/#tag/fine-tuning/operation/jobs_api_routes_fine_tuning_cancel_fine_tuning_job) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/finetuning/cancelFineTuningJob.php)
-    -   `cancelFineTuningJob(array $parameters = [])`
--   [Start Fine-Tuning Job](https://docs.mistral.ai/api/#tag/fine-tuning/operation/jobs_api_routes_fine_tuning_start_fine_tuning_job) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/finetuning/startFineTuningJob.php)
-    -   `startFineTuningJob(array $parameters = [])`
--   [Create Fine-Tuning Job](https://docs.mistral.ai/api/#tag/fine-tuning/operation/jobs_api_routes_fine_tuning_create_fine_tuning_job) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/finetuning/createFineTuningJob.php)
-    -   `createFineTuningJob(array $options = [])`
+-   [Fine-Tuning Jobs](https://docs.mistral.ai/api/endpoint/fine-tuning) – [Examples](https://github.com/SoftCreatR/php-mistral-ai-sdk/tree/main/examples/fine_tuning)
+    -   `listFineTuningJobs()`, `retrieveFineTuningJob(array $parameters = [])`
+    -   `createFineTuningJob(array $parameters = [], array $options = [])`
+    -   `cancelFineTuningJob(array $parameters = [])`, `startFineTuningJob(array $parameters = [])`
 
 ### FIM Completion
--   [Create FIM Completion](https://docs.mistral.ai/api/#tag/fim/operation/fim_completion_v1_fim_completions_post) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/fim/createFimCompletion.php)
-    -   `createFimCompletion(array $options = [])`
+-   [Create FIM Completion](https://docs.mistral.ai/api/endpoint/fim) – [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/fim/createFimCompletion.php)
+    -   `createFimCompletion(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
 
 ### Agents Completion
--   [Create Agents Completion](https://docs.mistral.ai/api/#tag/agents/operation/agents_completion_v1_agents_completions_post) - [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/agents/createAgentsCompletion.php)
-    -   `createAgentsCompletion(array $options = [])`
+-   [Create Agents Completion](https://docs.mistral.ai/api/endpoint/agents) – [Example](https://github.com/SoftCreatR/php-mistral-ai-sdk/blob/main/examples/agents/createAgentsCompletion.php)
+    -   `createAgentsCompletion(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+
+### Agents API (Beta)
+-   [Manage Agents](https://docs.mistral.ai/api/endpoint/beta/agents)
+    -   `listAgents()`, `createAgent(array $parameters = [], array $options = [])`
+    -   `retrieveAgent(array $parameters = [])`, `updateAgent(array $parameters = [], array $options = [])`
+    -   `updateAgentVersion(array $parameters = [], array $options = [])`, `deleteAgent(array $parameters = [])`
+
+### Conversations API (Beta)
+-   [Conversational Workflows](https://docs.mistral.ai/api/endpoint/beta/conversations)
+    -   `listConversations()`, `startConversation(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+    -   `retrieveConversation(array $parameters = [])`, `appendConversation(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+    -   `deleteConversation(array $parameters = [])`, `restartConversation(array $parameters = [], array $options = [], ?callable $streamCallback = null)`
+    -   Streaming helpers: `startConversationStream`, `appendConversationStream`, `restartConversationStream`
+    -   History helpers: `listConversationHistory(array $parameters = [])`, `listConversationMessages(array $parameters = [])`
+
+### Knowledge Libraries (Beta)
+-   [Libraries & Shares](https://docs.mistral.ai/api/endpoint/beta/libraries)
+    -   `listLibraries()`, `createLibrary(array $parameters = [], array $options = [])`
+    -   `retrieveLibrary(array $parameters = [])`, `updateLibrary(array $parameters = [], array $options = [])`
+    -   `deleteLibrary(array $parameters = [])`, `listLibraryShares(array $parameters = [])`
+    -   `upsertLibraryShare(array $parameters = [], array $options = [])`, `deleteLibraryShare(array $parameters = [])`
+-   [Library Documents](https://docs.mistral.ai/api/endpoint/beta/libraries/documents)
+    -   `listLibraryDocuments(array $parameters = [])`, `uploadLibraryDocument(array $parameters = [], array $options = [])`
+    -   `retrieveLibraryDocument(array $parameters = [])`, `updateLibraryDocument(array $parameters = [], array $options = [])`
+    -   `deleteLibraryDocument(array $parameters = [])`, `retrieveLibraryDocumentStatus(array $parameters = [])`
+    -   `retrieveLibraryDocumentTextContent(array $parameters = [])`
+    -   `retrieveLibraryDocumentSignedUrl(array $parameters = [])`
+    -   `retrieveLibraryDocumentExtractedTextSignedUrl(array $parameters = [])`
+    -   `reprocessLibraryDocument(array $parameters = [], array $options = [])`
+
+### Moderations & Classifications
+-   [Safety & Classifier APIs](https://docs.mistral.ai/api/endpoint/classifiers)
+    -   `createModeration(array $parameters = [], array $options = [])`
+    -   `createChatModeration(array $parameters = [], array $options = [])`
+    -   `createClassification(array $parameters = [], array $options = [])`
+    -   `createChatClassification(array $parameters = [], array $options = [])`
+
+### OCR
+-   [Create OCR Job](https://docs.mistral.ai/api/endpoint/ocr)
+    -   `createOcr(array $parameters = [], array $options = [])`
 
 ## Changelog
 

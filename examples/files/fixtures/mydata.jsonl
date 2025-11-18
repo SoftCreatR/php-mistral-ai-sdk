@@ -1,0 +1,2 @@
+{"messages": [{"role": "system", "content": "Predict whether the ad copy is supported."}, {"role": "user", "content": "Company: BHFF insurance\nProduct: allround insurance\nAd:One stop shop for all your insurance needs!\nSupported:"}, {"role": "assistant", "content": " yes"}]}
+{"messages": [{"role": "system", "content": "Predict whether the ad copy is supported."}, {"role": "user", "content": "Company: Loft conversion specialists\nProduct: -\nAd:Straight teeth in weeks!\nSupported:"}, {"role": "assistant", "content": " no"}]}

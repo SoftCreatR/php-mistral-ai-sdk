@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024, Sascha Greuel and Contributors
+ * Copyright (c) 2024-present, Sascha Greuel and Contributors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -39,44 +39,108 @@ final class MistralAIURLBuilder
 
     private const HTTP_METHOD_PATCH = 'PATCH';
 
+    private const HTTP_METHOD_PUT = 'PUT';
+
     /**
      * Configuration of MistralAI API endpoints.
      *
-     * @var array<string, array{method: string, path: string}>
+     * @var array<string, array{method: string, path: string, streaming?: bool}>
      */
     private static array $urlEndpoints = [
         // Models
-        'listModels' => ['method' => self::HTTP_METHOD_GET,    'path' => '/models'],
-        'retrieveModel' => ['method' => self::HTTP_METHOD_GET,    'path' => '/models/{model_id}'],
+        'listModels' => ['method' => self::HTTP_METHOD_GET, 'path' => '/models'],
+        'retrieveModel' => ['method' => self::HTTP_METHOD_GET, 'path' => '/models/{model_id}'],
         'deleteModel' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/models/{model_id}'],
-        'updateFineTunedModel' => ['method' => self::HTTP_METHOD_PATCH,  'path' => '/fine_tuning/models/{model_id}'],
-        'archiveModel' => ['method' => self::HTTP_METHOD_POST,   'path' => '/fine_tuning/models/{model_id}/archive'],
+        'updateFineTunedModel' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/fine_tuning/models/{model_id}'],
+        'archiveModel' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fine_tuning/models/{model_id}/archive'],
         'unarchiveModel' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/fine_tuning/models/{model_id}/archive'],
 
+        // Batch Jobs
+        'listBatchJobs' => ['method' => self::HTTP_METHOD_GET, 'path' => '/batch/jobs'],
+        'createBatchJob' => ['method' => self::HTTP_METHOD_POST, 'path' => '/batch/jobs'],
+        'retrieveBatchJob' => ['method' => self::HTTP_METHOD_GET, 'path' => '/batch/jobs/{job_id}'],
+        'cancelBatchJob' => ['method' => self::HTTP_METHOD_POST, 'path' => '/batch/jobs/{job_id}/cancel'],
+
         // Files
-        'uploadFile' => ['method' => self::HTTP_METHOD_POST,   'path' => '/files'],
-        'listFiles' => ['method' => self::HTTP_METHOD_GET,    'path' => '/files'],
-        'retrieveFile' => ['method' => self::HTTP_METHOD_GET,    'path' => '/files/{file_id}'],
+        'uploadFile' => ['method' => self::HTTP_METHOD_POST, 'path' => '/files'],
+        'listFiles' => ['method' => self::HTTP_METHOD_GET, 'path' => '/files'],
+        'retrieveFile' => ['method' => self::HTTP_METHOD_GET, 'path' => '/files/{file_id}'],
         'deleteFile' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/files/{file_id}'],
+        'downloadFile' => ['method' => self::HTTP_METHOD_GET, 'path' => '/files/{file_id}/content'],
+        'retrieveFileSignedUrl' => ['method' => self::HTTP_METHOD_GET, 'path' => '/files/{file_id}/url'],
 
         // Fine-Tuning Jobs
-        'listFineTuningJobs' => ['method' => self::HTTP_METHOD_GET,    'path' => '/fine_tuning/jobs'],
-        'retrieveFineTuningJob' => ['method' => self::HTTP_METHOD_GET,    'path' => '/fine_tuning/jobs/{job_id}'],
-        'cancelFineTuningJob' => ['method' => self::HTTP_METHOD_POST,   'path' => '/fine_tuning/jobs/{job_id}/cancel'],
-        'startFineTuningJob' => ['method' => self::HTTP_METHOD_POST,   'path' => '/fine_tuning/jobs/{job_id}/start'],
-        'createFineTuningJob' => ['method' => self::HTTP_METHOD_POST,   'path' => '/fine_tuning/jobs'],
-
-        // Chat Completion
-        'createChatCompletion' => ['method' => self::HTTP_METHOD_POST,   'path' => '/chat/completions'],
-
-        // FIM Completion
-        'createFimCompletion' => ['method' => self::HTTP_METHOD_POST,   'path' => '/fim/completions'],
+        'listFineTuningJobs' => ['method' => self::HTTP_METHOD_GET, 'path' => '/fine_tuning/jobs'],
+        'retrieveFineTuningJob' => ['method' => self::HTTP_METHOD_GET, 'path' => '/fine_tuning/jobs/{job_id}'],
+        'cancelFineTuningJob' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fine_tuning/jobs/{job_id}/cancel'],
+        'startFineTuningJob' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fine_tuning/jobs/{job_id}/start'],
+        'createFineTuningJob' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fine_tuning/jobs'],
 
         // Agents Completion
         'createAgentsCompletion' => ['method' => self::HTTP_METHOD_POST, 'path' => '/agents/completions'],
 
+        // Agents (Beta)
+        'listAgents' => ['method' => self::HTTP_METHOD_GET, 'path' => '/agents'],
+        'createAgent' => ['method' => self::HTTP_METHOD_POST, 'path' => '/agents'],
+        'retrieveAgent' => ['method' => self::HTTP_METHOD_GET, 'path' => '/agents/{agent_id}'],
+        'deleteAgent' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/agents/{agent_id}'],
+        'updateAgent' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/agents/{agent_id}'],
+        'updateAgentVersion' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/agents/{agent_id}/version'],
+
+        // Conversations (Beta)
+        'listConversations' => ['method' => self::HTTP_METHOD_GET, 'path' => '/conversations'],
+        'startConversation' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations'],
+        'startConversationStream' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations', 'streaming' => true],
+        'retrieveConversation' => ['method' => self::HTTP_METHOD_GET, 'path' => '/conversations/{conversation_id}'],
+        'appendConversation' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations/{conversation_id}'],
+        'appendConversationStream' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations/{conversation_id}', 'streaming' => true],
+        'deleteConversation' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/conversations/{conversation_id}'],
+        'listConversationHistory' => ['method' => self::HTTP_METHOD_GET, 'path' => '/conversations/{conversation_id}/history'],
+        'listConversationMessages' => ['method' => self::HTTP_METHOD_GET, 'path' => '/conversations/{conversation_id}/messages'],
+        'restartConversation' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations/{conversation_id}/restart'],
+        'restartConversationStream' => ['method' => self::HTTP_METHOD_POST, 'path' => '/conversations/{conversation_id}/restart', 'streaming' => true],
+
+        // Libraries (Beta)
+        'listLibraries' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries'],
+        'createLibrary' => ['method' => self::HTTP_METHOD_POST, 'path' => '/libraries'],
+        'retrieveLibrary' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}'],
+        'updateLibrary' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/libraries/{library_id}'],
+        'deleteLibrary' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}'],
+        'listLibraryShares' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/share'],
+        'upsertLibraryShare' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/libraries/{library_id}/share'],
+        'deleteLibraryShare' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}/share'],
+        'listLibraryDocuments' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents'],
+        'uploadLibraryDocument' => ['method' => self::HTTP_METHOD_POST, 'path' => '/libraries/{library_id}/documents'],
+        'retrieveLibraryDocument' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}'],
+        'updateLibraryDocument' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/libraries/{library_id}/documents/{document_id}'],
+        'deleteLibraryDocument' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}/documents/{document_id}'],
+        'retrieveLibraryDocumentTextContent' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/text_content'],
+        'retrieveLibraryDocumentStatus' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/status'],
+        'retrieveLibraryDocumentSignedUrl' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/signed-url'],
+        'retrieveLibraryDocumentExtractedTextSignedUrl' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/extracted-text-signed-url'],
+        'reprocessLibraryDocument' => ['method' => self::HTTP_METHOD_POST, 'path' => '/libraries/{library_id}/documents/{document_id}/reprocess'],
+
+        // Files-derived resources (OCR, Audio, Embeddings, etc.)
+        'createAudioTranscription' => ['method' => self::HTTP_METHOD_POST, 'path' => '/audio/transcriptions'],
+        'createAudioTranscriptionStream' => ['method' => self::HTTP_METHOD_POST, 'path' => '/audio/transcriptions', 'streaming' => true],
+
+        // Chat Completion
+        'createChatCompletion' => ['method' => self::HTTP_METHOD_POST, 'path' => '/chat/completions'],
+
+        // FIM Completion
+        'createFimCompletion' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fim/completions'],
+
         // Embeddings
-        'createEmbedding' => ['method' => self::HTTP_METHOD_POST,   'path' => '/embeddings'],
+        'createEmbedding' => ['method' => self::HTTP_METHOD_POST, 'path' => '/embeddings'],
+
+        // Classifiers
+        'createModeration' => ['method' => self::HTTP_METHOD_POST, 'path' => '/moderations'],
+        'createChatModeration' => ['method' => self::HTTP_METHOD_POST, 'path' => '/chat/moderations'],
+        'createClassification' => ['method' => self::HTTP_METHOD_POST, 'path' => '/classifications'],
+        'createChatClassification' => ['method' => self::HTTP_METHOD_POST, 'path' => '/chat/classifications'],
+
+        // OCR
+        'createOcr' => ['method' => self::HTTP_METHOD_POST, 'path' => '/ocr'],
     ];
 
     /**

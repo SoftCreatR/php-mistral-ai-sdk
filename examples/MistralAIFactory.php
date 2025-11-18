@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024, Sascha Greuel and Contributors
+ * Copyright (c) 2024-present, Sascha Greuel and Contributors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,102 +20,130 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use Dotenv\Dotenv;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
 use SoftCreatR\MistralAI\MistralAI;
 use SoftCreatR\MistralAI\MistralAIURLBuilder;
 
+// Load .env variables from the project root if available.
+$projectRoot = \dirname(__DIR__);
+
+if (\file_exists($projectRoot . '/.env')) {
+    Dotenv::createImmutable($projectRoot)->load();
+}
+
 /**
  * Example factory class for creating and using the MistralAI client.
- *
- * Provides methods to instantiate the MistralAI client and send requests to the MistralAI API endpoints.
  */
 final class MistralAIFactory
 {
-    /**
-     * MistralAI API Key.
-     *
-     * @var string
-     */
-    private const API_KEY = 'your_api_key';
+    private function __construct() {}
 
     /**
-     * Prevents instantiation of this class.
+     * Create a configured MistralAI client.
      */
-    private function __construct()
-    {
-        // This class should not be instantiated.
-    }
-
-    /**
-     * Creates an instance of the MistralAI client.
-     *
-     * @param string $apiKey The MistralAI API key.
-     *
-     * @return MistralAI The MistralAI client instance.
-     */
-    public static function create(#[SensitiveParameter] string $apiKey = self::API_KEY): MistralAI
-    {
+    public static function create(
+        #[SensitiveParameter]
+        string $apiKey = ''
+    ): MistralAI {
         $psr17Factory = new HttpFactory();
-        $httpClient = new Client([
-            'stream' => true,
-        ]);
+        $httpClient = new Client(['stream' => true]);
 
         return new MistralAI(
             requestFactory: $psr17Factory,
             streamFactory: $psr17Factory,
             uriFactory: $psr17Factory,
             httpClient: $httpClient,
-            apiKey: $apiKey
+            apiKey: $apiKey,
+            origin: $_ENV['MISTRAL_API_ORIGIN'] ?? '',
+            apiVersion: $_ENV['MISTRAL_API_VERSION'] ?? '',
         );
     }
 
     /**
-     * Sends a request to the specified MistralAI API endpoint.
+     * Generic helper to call any Mistral endpoint.
      *
-     * @param string         $method         The name of the API method to call.
-     * @param array          $parameters     An associative array of parameters (URL parameters or request options).
-     * @param callable|null  $streamCallback Optional callback function for streaming responses.
-     *
-     * @return void
+     * @return mixed|null Returns decoded JSON by default, raw string when $returnResponse is true, or null for streams.
      */
-    public static function request(string $method, array $parameters = [], ?callable $streamCallback = null): void
-    {
-        $mistralAI = self::create();
+    public static function request(
+        string $method,
+        array $parameters = [],
+        array|callable|null $options = [],
+        ?callable $streamCallback = null,
+        bool $returnResponse = false
+    ): mixed {
+        $mistral = self::create($_ENV['MISTRAL_API_KEY'] ?? '');
+
+        if (\is_callable($options) && $streamCallback === null) {
+            $streamCallback = $options;
+            $options = [];
+        }
+
+        if ($options === null) {
+            $options = [];
+        }
 
         try {
             $endpoint = MistralAIURLBuilder::getEndpoint($method);
-            $path = $endpoint['path'];
+            $hasPlaceholders = (bool)\preg_match('/\{\w+}/', $endpoint['path']);
 
-            // Determine if the path contains placeholders
-            $hasPlaceholders = \preg_match('/\{(\w+)}/', $path) === 1;
+            $urlParams = $hasPlaceholders ? $parameters : [];
+            $bodyOpts = $hasPlaceholders ? $options : ($parameters + $options);
+
+            $args = [];
+
+            $normalizeQuery = static function (array $options): array {
+                if (isset($options['query'])) {
+                    $query = (array)$options['query'];
+                    unset($options['query']);
+                    $options['_query'] = $query;
+                }
+
+                return $options;
+            };
 
             if ($hasPlaceholders) {
-                $urlParameters = $parameters;
-                $bodyOptions = [];
+                $args[] = $urlParams;
+
+                if (!empty($bodyOpts)) {
+                    $bodyOpts = $normalizeQuery($bodyOpts);
+                    $args[] = $bodyOpts;
+                }
             } else {
-                $urlParameters = [];
-                $bodyOptions = $parameters;
+                $bodyOpts = $normalizeQuery($bodyOpts);
+                $args[] = $bodyOpts;
             }
 
             if ($streamCallback !== null) {
-                $mistralAI->{$method}($urlParameters, $bodyOptions, $streamCallback);
+                $args[] = $streamCallback;
+                $mistral->{$method}(...$args);
+
+                return null;
+            }
+
+            $response = $mistral->{$method}(...$args);
+
+            if ($returnResponse) {
+                return $response->getBody()->getContents();
+            }
+
+            $contentType = $response->getHeaderLine('Content-Type');
+            $body = $response->getBody()->getContents();
+
+            if (\str_contains($contentType, 'application/json')) {
+                $decoded = \json_decode($body, true, 512, \JSON_THROW_ON_ERROR);
+                echo "============\n| Response |\n============\n\n"
+                    . \json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT)
+                    . "\n\n============\n";
             } else {
-                $response = $mistralAI->{$method}($urlParameters, $bodyOptions);
-
-                $result = \json_decode(
-                    $response->getBody()->getContents(),
-                    true,
-                    512,
-                    \JSON_THROW_ON_ERROR
-                );
-
-                echo "============\n| Response |\n============\n\n";
-                echo \json_encode($result, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT);
-                echo "\n\n============\n";
+                echo "Received response with Content-Type: {$contentType}\n";
+                echo $body;
             }
         } catch (Exception $e) {
             echo "Error: {$e->getMessage()}\n";
         }
+
+        return null;
     }
 }

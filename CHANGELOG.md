@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-11-18
+
+### Added
+
+- Coverage for every endpoint currently documented at [docs.mistral.ai/api](https://docs.mistral.ai/api), including:
+    - Batch jobs, agents (beta), conversations (beta), knowledge libraries (beta), and the latest moderation/classification APIs.
+    - Audio transcription helpers (sync + streaming), OCR, file downloads, signed URLs, and knowledge-document utilities.
+    - Dedicated streaming helpers (`createAudioTranscriptionStream`, `startConversationStream`, etc.) that automatically enable server-sent events.
+- Builder metadata describing streaming endpoints so the client can set the correct transport and headers automatically.
+- Example scripts for each endpoint, organized under `examples/` by resource category.
+
+### Changed
+
+- `MistralAI::__call` now detects whether the target endpoint contains path placeholders, allowing you to pass request payloads as the first argument when no placeholders are needed (the previous two-array pattern still works).
+- GET/DELETE requests now serialize `$options` as query parameters instead of sending empty JSON bodies, and streaming calls advertise `Accept: text/event-stream`.
+- Added support for explicit query strings on POST/PATCH endpoints through the reserved `query` option (automatically mapped to `_query` internally).
+- Documentation and tests were refreshed to describe the expanded surface area, new helper methods, and the revised calling conventions.
+
 ## [2.0.0] - 2024-10-06
 
 ### Removed

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024, Sascha Greuel and Contributors
+ * Copyright (c) 2024-present, Sascha Greuel and Contributors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -68,7 +68,7 @@ class MistralAIURLBuilderTest extends TestCase
         $this->expectExceptionMessage('Missing path parameter "model_id".');
 
         $uriFactory = new HttpFactory();
-        MistralAIURLBuilder::createUrl($uriFactory, 'retrieveModel', []);
+        MistralAIURLBuilder::createUrl($uriFactory, 'retrieveModel');
     }
 
     /**
@@ -81,5 +81,20 @@ class MistralAIURLBuilderTest extends TestCase
 
         $uriFactory = new HttpFactory();
         MistralAIURLBuilder::createUrl($uriFactory, 'retrieveModel', ['model_id' => ['not', 'scalar']]);
+    }
+
+    /**
+     * Ensures streaming endpoints expose their metadata and do not leak fragment identifiers into the URI path.
+     */
+    public function testStreamingEndpointConfiguration(): void
+    {
+        $endpoint = MistralAIURLBuilder::getEndpoint('createAudioTranscriptionStream');
+        self::assertArrayHasKey('streaming', $endpoint);
+        self::assertTrue($endpoint['streaming']);
+
+        $uriFactory = new HttpFactory();
+        $uri = MistralAIURLBuilder::createUrl($uriFactory, 'createAudioTranscriptionStream');
+
+        self::assertSame('/v1/audio/transcriptions', $uri->getPath());
     }
 }

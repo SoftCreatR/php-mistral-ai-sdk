@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024, Sascha Greuel and Contributors
+ * Copyright (c) 2024-present, Sascha Greuel and Contributors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,6 +29,7 @@ use Psr\Http\Message\RequestInterface;
 use ReflectionException;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
 use SoftCreatR\MistralAI\MistralAI;
+use SoftCreatR\MistralAI\MistralAIURLBuilder;
 
 /**
  * @covers \SoftCreatR\MistralAI\Exception\MistralAIException
@@ -88,7 +89,6 @@ class MistralAITest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('First argument must be an array of parameters.');
 
-        /** @noinspection PhpParamsInspection */
         $this->mistralAI->createChatCompletion('invalid_argument');
     }
 
@@ -174,13 +174,17 @@ class MistralAITest extends TestCase
         $this->expectException(MistralAIException::class);
         $this->expectExceptionMessage('Bad Request');
 
-        $this->mistralAI->createChatCompletion([
-            'model' => 'mistral-tiny',
-            'messages' => [
-                ['role' => 'user', 'content' => 'Test message'],
+        $this->mistralAI->createChatCompletion(
+            [],
+            [
+                'model' => 'mistral-tiny',
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Test message'],
+                ],
+                'stream' => true,
             ],
-            'stream' => true,
-        ]);
+            static function (): void {}
+        );
     }
 
     /**
@@ -263,13 +267,17 @@ class MistralAITest extends TestCase
         $this->expectException(MistralAIException::class);
         $this->expectExceptionMessage('Client error in streaming');
 
-        $this->mistralAI->createChatCompletion([
-            'model' => 'mistral-tiny',
-            'messages' => [
-                ['role' => 'user', 'content' => 'Test message'],
+        $this->mistralAI->createChatCompletion(
+            [],
+            [
+                'model' => 'mistral-tiny',
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Test message'],
+                ],
+                'stream' => true,
             ],
-            'stream' => true,
-        ]);
+            static function (): void {}
+        );
     }
 
     /**
@@ -295,10 +303,62 @@ class MistralAITest extends TestCase
         $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
         $boundary = 'testBoundary';
 
-        $headers = $reflectionMethod->invoke($this->mistralAI, true, $boundary);
+        $headers = $reflectionMethod->invoke($this->mistralAI, true, $boundary, true, []);
 
         $this->assertArrayHasKey('Content-Type', $headers);
         $this->assertEquals("multipart/form-data; boundary={$boundary}", $headers['Content-Type']);
+        $this->assertEquals('application/json', $headers['Accept']);
+    }
+
+    /**
+     * Tests that createHeaders sets the Accept header for streaming requests.
+     *
+     * @throws ReflectionException
+     */
+    public function testCreateHeadersForStreamingRequest(): void
+    {
+        $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
+
+        $headers = $reflectionMethod->invoke($this->mistralAI, false, null, false, ['stream' => true]);
+
+        $this->assertSame('text/event-stream', $headers['Accept']);
+        $this->assertArrayNotHasKey('Content-Type', $headers, 'Content-Type should not be set when there is no body.');
+    }
+
+    /**
+     * Ensures GET requests serialize query parameters instead of sending a JSON body.
+     */
+    public function testGetRequestAppendsQueryParameters(): void
+    {
+        $this->sendRequestMock(static function (RequestInterface $request) {
+            self::assertSame('limit=5&order=desc', $request->getUri()->getQuery());
+            self::assertSame('', (string)$request->getBody());
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->listModels([], ['limit' => 5, 'order' => 'desc']);
+    }
+
+    /**
+     * Ensures body-capable methods still allow query parameters.
+     */
+    public function testPatchRequestSupportsQueryParameters(): void
+    {
+        $this->sendRequestMock(static function (RequestInterface $request) {
+            self::assertSame('version=2.0.0', $request->getUri()->getQuery());
+            self::assertSame('{"notes":"Promote"}', (string)$request->getBody());
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->updateAgentVersion(
+            ['agent_id' => 'agent_123'],
+            [
+                '_query' => ['version' => '2.0.0'],
+                'notes' => 'Promote',
+            ]
+        );
     }
 
     /**
@@ -404,6 +464,37 @@ class MistralAITest extends TestCase
 
         $expectedOutput = 'Once upon a time, in a land far away, there lived a brave knight named Sir Alaric.';
         $this->assertEquals($expectedOutput, $output);
+    }
+
+    /**
+     * Ensures the audio transcription streaming helper always enables streaming responses.
+     */
+    public function testCreateAudioTranscriptionStream(): void
+    {
+        $fakeResponseContent = "data: {\"text\":\"hi\"}\n\n" . "data: [DONE]\n";
+        $stream = \fopen('php://temp', 'rb+');
+        \fwrite($stream, $fakeResponseContent);
+        \rewind($stream);
+
+        $fakeResponse = new Response(200, [], $stream);
+
+        $this->sendRequestMock(static function (RequestInterface $request) use ($fakeResponse) {
+            self::assertSame('text/event-stream', $request->getHeaderLine('Accept'));
+            self::assertStringContainsString('"stream":true', (string)$request->getBody());
+
+            return $fakeResponse;
+        });
+
+        $captured = '';
+
+        $this->mistralAI->createAudioTranscriptionStream([], [
+            'model' => 'mistral-scribe',
+            'audio_url' => 'https://example.com/audio.wav',
+        ], static function (array $data) use (&$captured): void {
+            $captured .= $data['text'] ?? '';
+        });
+
+        $this->assertSame('hi', $captured);
     }
 
     /**
@@ -677,48 +768,32 @@ class MistralAITest extends TestCase
     public function testExtractCallArguments(): void
     {
         $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'extractCallArguments');
+        $retrieveEndpoint = MistralAIURLBuilder::getEndpoint('retrieveModel');
+        $chatEndpoint = MistralAIURLBuilder::getEndpoint('createChatCompletion');
 
-        $testCases = [
-            // Parameters, Options, Stream Callback
-            [
-                [['key' => 'value'], ['option_key' => 'option_value'], static function () {}],
-                ['key' => 'value', 'option_key' => 'option_value', 'streamCallback' => true],
-            ],
-            // Parameters and Options without Stream Callback
-            [
-                [['key' => 'value'], ['option_key' => 'option_value']],
-                ['key' => 'value', 'option_key' => 'option_value', 'streamCallback' => null],
-            ],
-            // Only Parameters
-            [
-                [['key' => 'value']],
-                ['key' => 'value', 'option_key' => null, 'streamCallback' => null],
-            ],
-            // Empty array
-            [
-                [],
-                ['key' => null, 'option_key' => null, 'streamCallback' => null],
-            ],
-        ];
+        $result = $reflectionMethod->invoke($this->mistralAI, $retrieveEndpoint, [['model_id' => 'model_123']]);
+        $this->assertSame(['model_id' => 'model_123'], $result[0]);
+        $this->assertSame([], $result[1]);
+        $this->assertNull($result[2]);
 
-        foreach ($testCases as $testCase) {
-            [$args, $expected] = $testCase;
-            $result = $reflectionMethod->invoke($this->mistralAI, $args);
+        $result = $reflectionMethod->invoke($this->mistralAI, $retrieveEndpoint, [['model_id' => 'model_456'], ['description' => 'test']]);
+        $this->assertSame(['model_id' => 'model_456'], $result[0]);
+        $this->assertSame(['description' => 'test'], $result[1]);
 
-            $this->assertIsArray($result);
-            $this->assertCount(3, $result);
+        $streamCallback = static function (): void {};
+        $result = $reflectionMethod->invoke($this->mistralAI, $chatEndpoint, [[
+            'model' => 'mistral-tiny',
+            'messages' => [['role' => 'user', 'content' => 'Hi']],
+        ], $streamCallback]);
+        $this->assertSame([], $result[0]);
+        $this->assertEquals('mistral-tiny', $result[1]['model']);
+        $this->assertSame($streamCallback, $result[2]);
 
-            // Validate parameters
-            $this->assertEquals($expected['key'] ?? null, $result[0]['key'] ?? null);
-            $this->assertEquals($expected['option_key'] ?? null, $result[1]['option_key'] ?? null);
-
-            // Validate stream callback
-            if ($expected['streamCallback'] === true) {
-                $this->assertIsCallable($result[2]);
-            } else {
-                $this->assertNull($result[2]);
-            }
-        }
+        $result = $reflectionMethod->invoke($this->mistralAI, $chatEndpoint, [[
+            'model' => 'mistral-medium',
+        ], ['temperature' => 0.2]]);
+        $this->assertSame(['model' => 'mistral-medium'], $result[0]);
+        $this->assertSame(['temperature' => 0.2], $result[1]);
     }
 
     /**
@@ -729,33 +804,20 @@ class MistralAITest extends TestCase
      */
     public function testCallAPIJsonEncodingException(): void
     {
-        $this->sendRequestMock(static function (RequestInterface $request) {
-            $fakeResponse = new Response(200, [], '');
-            self::assertEquals('', (string)$request->getBody());
-
-            return $fakeResponse;
-        });
+        $this->expectException(MistralAIException::class);
+        $this->expectExceptionMessageMatches('/JSON encode error/i');
 
         $invalidValue = \tmpfile(); // Create an invalid value that cannot be JSON encoded
-        $response = null;
 
-        try {
-            $response = $this->mistralAI->createChatCompletion([
-                'model' => 'mistral-tiny',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => $invalidValue,
-                    ],
+        $this->mistralAI->createChatCompletion([
+            'model' => 'mistral-tiny',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => $invalidValue,
                 ],
-            ]);
-        } catch (Exception) {
-            // Exception is expected due to invalid parameter; ignore
-        }
-
-        self::assertNotNull($response, 'Response should not be null even if exception is caught.');
-        self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('', (string)$response->getBody());
+            ],
+        ]);
     }
 
     /**
