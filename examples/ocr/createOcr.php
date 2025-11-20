@@ -39,7 +39,7 @@ if (\file_exists($pdfFixture)) {
 } else {
     $payload['document'] = [
         'type' => 'document_url',
-        'document_url' => 'https://example.com/sample.pdf',
+        'document_url' => 'https://github.com/SoftCreatR/php-mistral-ai-sdk/raw/refs/heads/main/examples/ocr/fixtures/document.pdf',
     ];
 }
 

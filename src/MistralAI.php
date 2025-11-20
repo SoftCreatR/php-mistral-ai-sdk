@@ -31,6 +31,7 @@ use Psr\Http\Message\UriInterface;
 use Random\RandomException;
 use SensitiveParameter;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
+
 use const JSON_THROW_ON_ERROR;
 use const PHP_QUERY_RFC3986;
 
@@ -479,7 +480,13 @@ class MistralAI
      */
     private function isMultipartRequest(array $params): bool
     {
-        return isset($params['file']);
+        foreach (['file', 'file_url', 'file_id'] as $multipartKey) {
+            if (\array_key_exists($multipartKey, $params)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -500,13 +507,12 @@ class MistralAI
         string $method,
         array $params,
         array $queryParams = []
-    ): array
-    {
+    ): array {
         $normalizedMethod = \strtoupper($method);
         $allowsBody = \in_array($normalizedMethod, ['POST', 'PUT', 'PATCH'], true);
 
         $bodyParams = $allowsBody ? $params : [];
-        $query = $allowsBody ? $queryParams : array_merge($params, $queryParams);
+        $query = $allowsBody ? $queryParams : \array_merge($params, $queryParams);
 
         if (!empty($query)) {
             $queryString = \http_build_query($query, '', '&', PHP_QUERY_RFC3986);

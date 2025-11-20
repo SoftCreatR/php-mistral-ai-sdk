@@ -21,6 +21,7 @@ namespace SoftCreatR\MistralAI\Exception;
 use Exception;
 use JsonException;
 use Throwable;
+
 use const JSON_THROW_ON_ERROR;
 
 /**

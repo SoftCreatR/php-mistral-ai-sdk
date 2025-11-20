@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2025-11-20
+
+### Fixed
+
+- Audio transcription helpers (sync + streaming) now submit multipart/form-data payloads even when using remote media via `file_url`, matching the requirements from the official API docs.
+
+### Changed
+
+- Removed the undocumented `audio_url`/`audio_id` aliases; clients must send `file`, `file_url`, or `file_id`, aligning the SDK surface with the server contract.
+
 ## [3.0.0] - 2025-11-18
 
 ### Added

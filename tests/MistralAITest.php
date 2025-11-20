@@ -478,18 +478,25 @@ class MistralAITest extends TestCase
 
         $fakeResponse = new Response(200, [], $stream);
 
-        $this->sendRequestMock(static function (RequestInterface $request) use ($fakeResponse) {
-            self::assertSame('text/event-stream', $request->getHeaderLine('Accept'));
-            self::assertStringContainsString('"stream":true', (string)$request->getBody());
+        $this->sendRequestMock(
+            static function (RequestInterface $request) use ($fakeResponse) {
+                $body = (string)$request->getBody();
 
-            return $fakeResponse;
-        });
+                self::assertSame('text/event-stream', $request->getHeaderLine('Accept'));
+                self::assertStringContainsString('multipart/form-data', $request->getHeaderLine('Content-Type'));
+                self::assertStringContainsString("name=\"stream\"\r\n\r\ntrue", $body);
+                self::assertStringContainsString('name="file_url"', $body);
+                self::assertStringContainsString('https://example.com/audio.wav', $body);
+
+                return $fakeResponse;
+            }
+        );
 
         $captured = '';
 
         $this->mistralAI->createAudioTranscriptionStream([], [
             'model' => 'mistral-scribe',
-            'audio_url' => 'https://example.com/audio.wav',
+            'file_url' => 'https://example.com/audio.wav',
         ], static function (array $data) use (&$captured): void {
             $captured .= $data['text'] ?? '';
         });

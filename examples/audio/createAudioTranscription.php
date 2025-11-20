@@ -37,7 +37,7 @@ $payload = [
 if (\file_exists($audioFixture)) {
     $payload['file'] = $audioFixture;
 } else {
-    $payload['audio_url'] = 'https://example.com/audio-file.wav';
+    $payload['file_url'] = 'https://github.com/SoftCreatR/php-mistral-ai-sdk/raw/refs/heads/main/examples/audio/fixtures/audio.mp3';
 }
 
 MistralAIFactory::request('createAudioTranscription', $payload);
