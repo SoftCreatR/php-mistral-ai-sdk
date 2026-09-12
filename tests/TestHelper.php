@@ -72,7 +72,7 @@ class TestHelper
      */
     public static function loadResponseFromFile(string $filename): string
     {
-        $filePath = __DIR__ . '/fixtures/responses/' . $filename;
+        $filePath = __DIR__ . '/fixtures/' . $filename;
 
         if (!\file_exists($filePath)) {
             throw new RuntimeException("Response file not found: {$filePath}");

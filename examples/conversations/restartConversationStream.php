@@ -16,20 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Stream the regeneration of a conversation (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: agents_api_v1_conversations_restart_stream
- */
-$streamCallback = static function (array $chunk): void {
-    if (isset($chunk['choices'][0]['delta']['content'])) {
-        echo $chunk['choices'][0]['delta']['content'];
-    }
-};
-
-MistralAIFactory::request('restartConversationStream', [
-    'conversation_id' => 'conv_123',
-], $streamCallback);
+// POST /v1/conversations/{conversation_id}/restart
+MistralAIFactory::request(
+    'restartConversationStream',
+    [
+        'conversation_id' => MistralAIFactory::env('MISTRAL_CONVERSATION_ID'),
+    ],
+    [
+        'from_entry_id' => MistralAIFactory::env('MISTRAL_FROM_ENTRY_ID'),
+        'stream' => true,
+    ],
+    static function (array $event): void {
+        echo \json_encode($event, JSON_THROW_ON_ERROR) . "\n";
+    },
+);

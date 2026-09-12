@@ -16,14 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Cancel a batch job.
- *
- * OpenAPI Reference:
- * - Operation ID: jobs_api_routes_batch_cancel_batch_job
- */
-MistralAIFactory::request('cancelBatchJob', [
-    'job_id' => 'batch_job_12345',
-]);
+// POST /v1/batch/jobs/{job_id}/cancel
+MistralAIFactory::request(
+    'cancelBatchJob',
+    [
+        'job_id' => MistralAIFactory::env('MISTRAL_JOB_ID'),
+    ],
+);

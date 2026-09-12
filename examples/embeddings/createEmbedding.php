@@ -16,20 +16,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Create embeddings using the 'mistral-embed' model.
- *
- * Model Description:
- * ID of the model to use for generating embeddings.
- *
- * In this example, we use 'mistral-embed' as the model.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: create_embedding_v1_embeddings_post
- */
-MistralAIFactory::request('createEmbedding', [
-    'model' => 'mistral-embed',
-    'input' => 'The quick brown fox jumps over the lazy dog.',
-]);
+// POST /v1/embeddings
+MistralAIFactory::request(
+    'createEmbedding',
+    [],
+    [
+        'model' => 'mistral-embed',
+        'input' => [
+            'Embed this sentence.',
+        ],
+    ],
+);

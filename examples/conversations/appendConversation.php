@@ -16,18 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Append user content to an existing conversation (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: agents_api_v1_conversations_append
- */
-MistralAIFactory::request('appendConversation', [
-    'conversation_id' => 'conv_123',
-], [
-    'messages' => [
-        ['role' => 'user', 'content' => 'Add a follow-up question to this thread.'],
+// POST /v1/conversations/{conversation_id}
+MistralAIFactory::request(
+    'appendConversation',
+    [
+        'conversation_id' => MistralAIFactory::env('MISTRAL_CONVERSATION_ID'),
     ],
-]);
+);

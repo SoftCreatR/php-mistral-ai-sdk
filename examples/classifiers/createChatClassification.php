@@ -16,18 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Classify a structured conversation.
- *
- * OpenAPI Reference:
- * - Operation ID: chat_classifications_v1_chat_classifications_post
- */
-MistralAIFactory::request('createChatClassification', [
-    'model' => 'mistral-classifier-latest',
-    'messages' => [
-        ['role' => 'user', 'content' => 'I need to change my credit card.'],
+// POST /v1/chat/classifications
+MistralAIFactory::request(
+    'createChatClassification',
+    [],
+    [
+        'model' => 'mistral-moderation-latest',
+        'input' => [
+            [
+                'role' => 'user',
+                'content' => 'This is a test message.',
+            ],
+        ],
     ],
-    'labels' => ['billing', 'support', 'sales'],
-]);
+);

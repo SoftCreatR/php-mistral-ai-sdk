@@ -25,33 +25,24 @@ use ReflectionClass;
 use ReflectionException;
 use SoftCreatR\MistralAI\MistralAIURLBuilder;
 
+use const PHP_QUERY_RFC3986;
+
 /**
  * @covers \SoftCreatR\MistralAI\MistralAIURLBuilder
  */
-class MistralAIURLBuilderTest extends TestCase
+final class MistralAIURLBuilderTest extends TestCase
 {
-    /**
-     * Tests the constructor of MistralAIURLBuilder to ensure it's covered.
-     *
-     * @throws ReflectionException
-     */
-    public function testMistralAIURLBuilderConstructor(): void
+    /** @throws ReflectionException */
+    public function testConstructorIsCovered(): void
     {
         $constructor = TestHelper::getPrivateConstructor(MistralAIURLBuilder::class);
-
-        $reflectionClass = new ReflectionClass(MistralAIURLBuilder::class);
-        $instance = $reflectionClass->newInstanceWithoutConstructor();
-
-        // Invoke the constructor
+        $instance = (new ReflectionClass(MistralAIURLBuilder::class))->newInstanceWithoutConstructor();
         $constructor->invoke($instance);
 
         $this->assertInstanceOf(MistralAIURLBuilder::class, $instance);
     }
 
-    /**
-     * Tests that getEndpoint throws an exception for an invalid key.
-     */
-    public function testGetEndpointWithInvalidKey(): void
+    public function testGetEndpointRejectsInvalidKey(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid Mistral AI URL key "invalidKey".');
@@ -59,42 +50,125 @@ class MistralAIURLBuilderTest extends TestCase
         MistralAIURLBuilder::getEndpoint('invalidKey');
     }
 
-    /**
-     * Tests that createUrl throws an exception when a required path parameter is missing.
-     */
-    public function testCreateUrlWithMissingPathParameter(): void
+    public function testGetEndpointReturnsAdministrationEndpoint(): void
+    {
+        $endpoint = MistralAIURLBuilder::getEndpoint('listAdminUsers');
+
+        $this->assertSame('/admin/users', $endpoint['path']);
+        $this->assertTrue($endpoint['admin']);
+    }
+
+    public function testCreateUrlRejectsMissingPathParameter(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Missing path parameter "model_id".');
 
-        $uriFactory = new HttpFactory();
-        MistralAIURLBuilder::createUrl($uriFactory, 'retrieveModel');
+        MistralAIURLBuilder::createUrl(new HttpFactory(), 'retrieveModel');
     }
 
-    /**
-     * Tests that createUrl throws an exception when a path parameter is not scalar.
-     */
-    public function testCreateUrlWithNonScalarPathParameter(): void
+    public function testCreateUrlRejectsNonScalarPathParameter(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Parameter "model_id" must be a scalar value, array given.');
 
-        $uriFactory = new HttpFactory();
-        MistralAIURLBuilder::createUrl($uriFactory, 'retrieveModel', ['model_id' => ['not', 'scalar']]);
+        MistralAIURLBuilder::createUrl(
+            new HttpFactory(),
+            'retrieveModel',
+            ['model_id' => ['not', 'scalar']],
+        );
     }
 
-    /**
-     * Ensures streaming endpoints expose their metadata and do not leak fragment identifiers into the URI path.
-     */
-    public function testStreamingEndpointConfiguration(): void
+    public function testRegistryMirrorsTheCurrentPublicSurface(): void
     {
-        $endpoint = MistralAIURLBuilder::getEndpoint('createAudioTranscriptionStream');
-        self::assertArrayHasKey('streaming', $endpoint);
-        self::assertTrue($endpoint['streaming']);
+        $endpoints = MistralAIURLBuilder::getEndpoints();
+        $routes = [];
 
-        $uriFactory = new HttpFactory();
-        $uri = MistralAIURLBuilder::createUrl($uriFactory, 'createAudioTranscriptionStream');
+        $this->assertCount(288, $endpoints);
 
-        self::assertSame('/v1/audio/transcriptions', $uri->getPath());
+        foreach ($endpoints as $name => $endpoint) {
+            $this->assertContains($endpoint['method'], ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], $name);
+            $this->assertContains($endpoint['body'], ['none', 'json', 'multipart'], $name);
+            $this->assertNotSame('', $endpoint['category'], $name);
+            $examplePath = \dirname(__DIR__) . '/examples/' . $endpoint['category'] . '/' . $name . '.php';
+            $this->assertFileExists($examplePath, $name);
+
+            $example = \file_get_contents($examplePath);
+            $this->assertIsString($example, $name);
+            $this->assertStringContainsString("'{$name}'", $example, $name);
+
+            if ($endpoint['body'] === 'multipart') {
+                $this->assertArrayHasKey('fileFields', $endpoint, $name);
+            }
+
+            if (isset($endpoint['basePath'])) {
+                $this->assertSame('/v2', $endpoint['basePath'], $name);
+            }
+
+            if (isset($endpoint['streaming'])) {
+                $this->assertTrue($endpoint['streaming'], $name);
+            }
+
+            if (isset($endpoint['admin'])) {
+                $this->assertTrue($endpoint['admin'], $name);
+            }
+
+            $query = isset($endpoint['query'])
+                ? '?' . \http_build_query($endpoint['query'], '', '&', PHP_QUERY_RFC3986)
+                : '';
+            $route = $endpoint['method'] . ' ' . ($endpoint['basePath'] ?? '/v1') . $endpoint['path'] . $query;
+
+            if ($endpoint['streaming'] ?? false) {
+                $route .= '#stream';
+            }
+
+            $this->assertArrayNotHasKey($route, $routes, "Duplicate route registered by {$name}.");
+            $routes[$route] = true;
+        }
+
+        $this->assertSame('/v2', $endpoints['listPrompts']['basePath']);
+        $this->assertSame(['file'], $endpoints['uploadFile']['fileFields']);
+        $this->assertTrue($endpoints['startConversationStream']['streaming']);
+        $this->assertTrue($endpoints['listAdminUsers']['admin']);
+        $this->assertArrayHasKey('searchTraces', $endpoints);
+        $this->assertArrayHasKey('listConnectors', $endpoints);
+        $this->assertArrayHasKey('executeWorkflow', $endpoints);
+    }
+
+    public function testCreateUrlEncodesPathSegments(): void
+    {
+        $uri = MistralAIURLBuilder::createUrl(
+            new HttpFactory(),
+            'retrieveModel',
+            ['model_id' => 'custom/model name'],
+        );
+
+        $this->assertSame('/v1/models/custom%2Fmodel%20name', $uri->getPath());
+    }
+
+    public function testCreateUrlSupportsAbsoluteBaseUrlAndExplicitApiVersion(): void
+    {
+        $uri = MistralAIURLBuilder::createUrl(
+            new HttpFactory(),
+            'listModels',
+            [],
+            'http://localhost:8080/mistral/v1',
+        );
+        $overridden = MistralAIURLBuilder::createUrl(
+            new HttpFactory(),
+            'listModels',
+            [],
+            'http://localhost:8080/mistral/v1',
+            '/compatible/v1',
+        );
+
+        $this->assertSame('http://localhost:8080/mistral/v1/models', (string) $uri);
+        $this->assertSame('http://localhost:8080/compatible/v1/models', (string) $overridden);
+    }
+
+    public function testCreateUrlUsesEndpointSpecificV2BasePath(): void
+    {
+        $uri = MistralAIURLBuilder::createUrl(new HttpFactory(), 'listSkills');
+
+        $this->assertSame('https://api.mistral.ai/v2/skills', (string) $uri);
     }
 }

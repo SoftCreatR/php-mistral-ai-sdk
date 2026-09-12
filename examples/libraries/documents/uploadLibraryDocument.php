@@ -16,16 +16,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../../MistralAIFactory.php';
+require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-/**
- * Example: Upload a document to a library (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_documents_upload_v1
- */
-MistralAIFactory::request('uploadLibraryDocument', [
-    'library_id' => 'lib_123',
-    'file' => __DIR__ . '/../../tests/fixtures/dummyFile.jsonl',
-    'metadata' => ['title' => 'Support SOP'],
-]);
+// POST /v1/libraries/{library_id}/documents
+MistralAIFactory::request(
+    'uploadLibraryDocument',
+    [
+        'library_id' => MistralAIFactory::env('MISTRAL_LIBRARY_ID'),
+    ],
+    [
+        'file' => MistralAIFactory::fixture('document.pdf'),
+    ],
+);

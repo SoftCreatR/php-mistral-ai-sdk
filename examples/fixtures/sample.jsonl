@@ -1,0 +1,2 @@
+{"custom_id":"example-1","body":{"max_tokens":64,"messages":[{"role":"user","content":"What is the capital of France?"}]}}
+{"custom_id":"example-2","body":{"max_tokens":64,"messages":[{"role":"user","content":"Name one moon of Mars."}]}}

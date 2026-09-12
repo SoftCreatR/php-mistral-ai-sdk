@@ -16,15 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: List all available models.
- *
- * This endpoint retrieves a list of all models available to your account,
- * including fine-tuned models.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: list_models_v1_models_get
- */
-MistralAIFactory::request('listModels');
+// GET /v1/models
+MistralAIFactory::request(
+    'listModels',
+);

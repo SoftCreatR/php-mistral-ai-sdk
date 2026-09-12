@@ -16,12 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: List existing batch jobs.
- *
- * OpenAPI Reference:
- * - Operation ID: jobs_api_routes_batch_get_batch_jobs
- */
-MistralAIFactory::request('listBatchJobs');
+// GET /v1/batch/jobs
+MistralAIFactory::request(
+    'listBatchJobs',
+);

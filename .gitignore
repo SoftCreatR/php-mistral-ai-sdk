@@ -1,6 +1,7 @@
 /composer.lock
 vendor/
 /*.cache
+.phpstan-cache/
 .idea/
 /coverage.xml
 /.env

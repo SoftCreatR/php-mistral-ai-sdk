@@ -16,15 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Create a knowledge library (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_create_v1
- */
-MistralAIFactory::request('createLibrary', [
-    'name' => 'Support KB',
-    'description' => 'Internal knowledge base for the support team.',
-]);
+// POST /v1/libraries
+MistralAIFactory::request(
+    'createLibrary',
+    [],
+    [
+        'name' => 'SDK example library',
+        'description' => 'Documents used by the SDK examples.',
+    ],
+);

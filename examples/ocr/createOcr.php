@@ -16,31 +16,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Submit an OCR extraction job.
- *
- * OpenAPI Reference:
- * - Operation ID: ocr_v1_ocr_post
- */
-$pdfFixture = __DIR__ . '/fixtures/document.pdf';
-
-$payload = [
-    'model' => 'mistral-ocr-latest',
-];
-
-if (\file_exists($pdfFixture)) {
-    $base64 = \base64_encode(\file_get_contents($pdfFixture));
-    $payload['document'] = [
-        'type' => 'document_url',
-        'document_url' => 'data:application/pdf;base64,' . $base64,
-    ];
-} else {
-    $payload['document'] = [
-        'type' => 'document_url',
-        'document_url' => 'https://github.com/SoftCreatR/php-mistral-ai-sdk/raw/refs/heads/main/examples/ocr/fixtures/document.pdf',
-    ];
-}
-
-MistralAIFactory::request('createOcr', $payload);
+// POST /v1/ocr
+MistralAIFactory::request(
+    'createOcr',
+    [],
+    [
+        'model' => 'mistral-ocr-latest',
+        'document' => [
+            'type' => 'document_url',
+            'document_url' => 'https://arxiv.org/pdf/2201.04234',
+        ],
+    ],
+);

@@ -16,29 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Upload a file for fine-tuning purposes.
- *
- * Model Description:
- * Upload a file that contains document(s) to be used across various endpoints/features.
- * The file must be a valid JSON Lines (.jsonl) file, where each line is a JSON object
- * with the keys "prompt" and "completion".
- *
- * OpenAPI Specification Reference:
- * - Operation ID: upload_file_v1_files_post
- */
-$fixturePath = __DIR__ . '/fixtures/mydata.jsonl';
-
-$payload = [
-    'purpose' => 'fine-tune',
-];
-
-if (\file_exists($fixturePath)) {
-    $payload['file'] = $fixturePath;
-} else {
-    $payload['file'] = '/path/to/your/training_data.jsonl';
-}
-
-MistralAIFactory::request('uploadFile', $payload);
+// POST /v1/files
+MistralAIFactory::request(
+    'uploadFile',
+    [],
+    [
+        'file' => MistralAIFactory::fixture('sample.jsonl'),
+        'purpose' => 'batch',
+    ],
+);

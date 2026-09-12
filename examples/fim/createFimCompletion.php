@@ -16,25 +16,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Create a Fill-in-the-Middle (FIM) completion using the 'codestral-2405' model.
- *
- * Model Description:
- * ID of the model to use. Only compatible for now with:
- *   - 'codestral-2405'
- *   - 'codestral-latest'
- *
- * In this example, we use 'codestral-2405' as the model.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: create_fim_completion_v1_fim_completions_post
- */
-MistralAIFactory::request('createFimCompletion', [
-    'model' => 'codestral-2405',
-    'prompt' => 'def',
-    'suffix' => 'return a + b',
-    'temperature' => 0.7,
-    'top_p' => 1,
-]);
+// POST /v1/fim/completions
+MistralAIFactory::request(
+    'createFimCompletion',
+    [],
+    [
+        'model' => 'codestral-latest',
+        'prompt' => 'def fibonacci(n):',
+        'suffix' => '\n    return result',
+    ],
+);

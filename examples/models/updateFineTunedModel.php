@@ -16,20 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Update a fine-tuned model's metadata.
- *
- * Model Description:
- * Update the name or description of a fine-tuned model.
- *
- * In this example, we update the name and description of a fine-tuned model.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: update_ft_model_v1_fine_tuning_models__model_id__patch
- */
-MistralAIFactory::request('updateFineTunedModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123'], [
-    'name' => 'Updated Fine-Tuned Model Name',
-    'description' => 'This is an updated description for the fine-tuned model.',
-]);
+// PATCH /v1/fine_tuning/models/{model_id}
+MistralAIFactory::request(
+    'updateFineTunedModel',
+    [
+        'model_id' => MistralAIFactory::env('MISTRAL_MODEL_ID'),
+    ],
+);

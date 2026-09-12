@@ -18,6 +18,7 @@
 
 namespace SoftCreatR\MistralAI;
 
+use Exception;
 use InvalidArgumentException;
 use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
@@ -26,99 +27,325 @@ use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\UriInterface;
 use Random\RandomException;
 use SensitiveParameter;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
+use SoftCreatR\MistralAI\Http\MultipartBodyBuilder;
+use SoftCreatR\MistralAI\Http\ServerSentEventDecoder;
+use SoftCreatR\MistralAI\Http\StreamingClientInterface;
+use Throwable;
 
 use const JSON_THROW_ON_ERROR;
 use const PHP_QUERY_RFC3986;
 
 /**
- * A wrapper for the MistralAI API.
+ * PSR-17/PSR-18 client for the Mistral AI API.
  *
- * @method ResponseInterface|null listModels(array $parameters = [], array $options = []) Perform a GET request to list all models.
- * @method ResponseInterface|null retrieveModel(array $parameters = [], array $options = []) Perform a GET request to retrieve a specific model.
- * @method ResponseInterface|null deleteModel(array $parameters = [], array $options = []) Perform a DELETE request to delete a specific model.
- * @method ResponseInterface|null updateFineTunedModel(array $parameters = [], array $options = []) Perform a PATCH request to update a fine-tuned model.
- * @method ResponseInterface|null archiveModel(array $parameters = [], array $options = []) Perform a POST request to archive a specific model.
- * @method ResponseInterface|null unarchiveModel(array $parameters = [], array $options = []) Perform a DELETE request to unarchive a specific model.
- * @method ResponseInterface|null listBatchJobs(array $parameters = [], array $options = []) Perform a GET request to list batch jobs.
- * @method ResponseInterface|null createBatchJob(array $parameters = [], array $options = []) Perform a POST request to create a batch job.
- * @method ResponseInterface|null retrieveBatchJob(array $parameters = [], array $options = []) Perform a GET request to retrieve a specific batch job.
- * @method ResponseInterface|null cancelBatchJob(array $parameters = [], array $options = []) Perform a POST request to cancel a specific batch job.
- * @method ResponseInterface|null listAgents(array $parameters = [], array $options = []) Perform a GET request to list agents (beta).
- * @method ResponseInterface|null createAgent(array $parameters = [], array $options = []) Perform a POST request to create an agent (beta).
- * @method ResponseInterface|null retrieveAgent(array $parameters = [], array $options = []) Perform a GET request to retrieve an agent (beta).
- * @method ResponseInterface|null deleteAgent(array $parameters = [], array $options = []) Perform a DELETE request to delete an agent (beta).
- * @method ResponseInterface|null updateAgent(array $parameters = [], array $options = []) Perform a PATCH request to update an agent (beta).
- * @method ResponseInterface|null updateAgentVersion(array $parameters = [], array $options = []) Perform a PATCH request to update an agent version (beta).
- * @method ResponseInterface|null listConversations(array $parameters = [], array $options = []) Perform a GET request to list conversations (beta).
- * @method ResponseInterface|null startConversation(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to start a conversation (beta).
- * @method ResponseInterface|null retrieveConversation(array $parameters = [], array $options = []) Perform a GET request to retrieve a conversation (beta).
- * @method ResponseInterface|null appendConversation(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to append to a conversation (beta).
- * @method ResponseInterface|null deleteConversation(array $parameters = [], array $options = []) Perform a DELETE request to delete a conversation (beta).
- * @method ResponseInterface|null listConversationHistory(array $parameters = [], array $options = []) Perform a GET request to retrieve the history of a conversation (beta).
- * @method ResponseInterface|null listConversationMessages(array $parameters = [], array $options = []) Perform a GET request to retrieve the messages of a conversation (beta).
- * @method ResponseInterface|null restartConversation(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to restart a conversation (beta).
- * @method ResponseInterface|null startConversationStream(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a streamed POST request to start a conversation (beta).
- * @method ResponseInterface|null appendConversationStream(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a streamed POST request to append to a conversation (beta).
- * @method ResponseInterface|null restartConversationStream(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a streamed POST request to restart a conversation (beta).
- * @method ResponseInterface|null listLibraries(array $parameters = [], array $options = []) Perform a GET request to list knowledge libraries (beta).
- * @method ResponseInterface|null createLibrary(array $parameters = [], array $options = []) Perform a POST request to create a knowledge library (beta).
- * @method ResponseInterface|null retrieveLibrary(array $parameters = [], array $options = []) Perform a GET request to retrieve a knowledge library (beta).
- * @method ResponseInterface|null updateLibrary(array $parameters = [], array $options = []) Perform a PUT request to update a knowledge library (beta).
- * @method ResponseInterface|null deleteLibrary(array $parameters = [], array $options = []) Perform a DELETE request to delete a knowledge library (beta).
- * @method ResponseInterface|null listLibraryShares(array $parameters = [], array $options = []) Perform a GET request to list library shares (beta).
- * @method ResponseInterface|null upsertLibraryShare(array $parameters = [], array $options = []) Perform a PUT request to create or update a library share (beta).
- * @method ResponseInterface|null deleteLibraryShare(array $parameters = [], array $options = []) Perform a DELETE request to delete a library share (beta).
- * @method ResponseInterface|null listLibraryDocuments(array $parameters = [], array $options = []) Perform a GET request to list library documents (beta).
- * @method ResponseInterface|null uploadLibraryDocument(array $parameters = [], array $options = []) Perform a POST request to upload a library document (beta).
- * @method ResponseInterface|null retrieveLibraryDocument(array $parameters = [], array $options = []) Perform a GET request to retrieve a library document (beta).
- * @method ResponseInterface|null updateLibraryDocument(array $parameters = [], array $options = []) Perform a PUT request to update a library document (beta).
- * @method ResponseInterface|null deleteLibraryDocument(array $parameters = [], array $options = []) Perform a DELETE request to delete a library document (beta).
- * @method ResponseInterface|null retrieveLibraryDocumentTextContent(array $parameters = [], array $options = []) Perform a GET request to retrieve the extracted text of a library document (beta).
- * @method ResponseInterface|null retrieveLibraryDocumentStatus(array $parameters = [], array $options = []) Perform a GET request to fetch the processing status of a library document (beta).
- * @method ResponseInterface|null retrieveLibraryDocumentSignedUrl(array $parameters = [], array $options = []) Perform a GET request to fetch a signed URL for a library document (beta).
- * @method ResponseInterface|null retrieveLibraryDocumentExtractedTextSignedUrl(array $parameters = [], array $options = []) Perform a GET request to fetch a signed URL for a document's extracted text (beta).
- * @method ResponseInterface|null reprocessLibraryDocument(array $parameters = [], array $options = []) Perform a POST request to reprocess a library document (beta).
- * @method ResponseInterface|null uploadFile(array $parameters = [], array $options = []) Perform a POST request to upload a file.
- * @method ResponseInterface|null listFiles(array $parameters = [], array $options = []) Perform a GET request to list all files.
- * @method ResponseInterface|null retrieveFile(array $parameters = [], array $options = []) Perform a GET request to retrieve a specific file.
- * @method ResponseInterface|null deleteFile(array $parameters = [], array $options = []) Perform a DELETE request to delete a specific file.
- * @method ResponseInterface|null downloadFile(array $parameters = [], array $options = []) Perform a GET request to download the raw contents of a file.
- * @method ResponseInterface|null retrieveFileSignedUrl(array $parameters = [], array $options = []) Perform a GET request to retrieve the signed URL for a file download.
- * @method ResponseInterface|null listFineTuningJobs(array $parameters = [], array $options = []) Perform a GET request to list all fine-tuning jobs.
- * @method ResponseInterface|null retrieveFineTuningJob(array $parameters = [], array $options = []) Perform a GET request to retrieve a specific fine-tuning job.
- * @method ResponseInterface|null cancelFineTuningJob(array $parameters = [], array $options = []) Perform a POST request to cancel a specific fine-tuning job.
- * @method ResponseInterface|null startFineTuningJob(array $parameters = [], array $options = []) Perform a POST request to start a specific fine-tuning job.
- * @method ResponseInterface|null createFineTuningJob(array $parameters = [], array $options = []) Perform a POST request to create a fine-tuning job.
- * @method ResponseInterface|null createChatCompletion(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to create a chat completion.
- * @method ResponseInterface|null createAudioTranscription(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to create an audio transcription.
- * @method ResponseInterface|null createAudioTranscriptionStream(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a streamed POST request to create an audio transcription.
- * @method ResponseInterface|null createFimCompletion(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to create a FIM completion.
- * @method ResponseInterface|null createAgentsCompletion(array $parameters = [], array $options = [], ?\Closure $callback = null) Perform a POST request to create an agents completion.
- * @method ResponseInterface|null createEmbedding(array $parameters = [], array $options = []) Perform a POST request to create an embedding.
- * @method ResponseInterface|null createModeration(array $parameters = [], array $options = []) Perform a POST request to create a moderation.
- * @method ResponseInterface|null createChatModeration(array $parameters = [], array $options = []) Perform a POST request to create a chat moderation.
- * @method ResponseInterface|null createClassification(array $parameters = [], array $options = []) Perform a POST request to create a classification.
- * @method ResponseInterface|null createChatClassification(array $parameters = [], array $options = []) Perform a POST request to create a chat classification.
- * @method ResponseInterface|null createOcr(array $parameters = [], array $options = []) Perform a POST request to process OCR.
+ * Registered endpoints can be called as magic methods or through request().
+ * See README.md for the complete method catalog.
+ *
+ * API METHODS START
+ * @method ResponseInterface|null activateForConsumerConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null addAdminOrUpdateUsersWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null addAdminUsersWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null aggregateSpans(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null aggregateTraces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null appendConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null appendConversationStream(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null archiveModel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null archiveWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null assignAdminGroupToWorkspace(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null assignAdminUsersToGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null batchCancelWorkflowExecutions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null batchTerminateWorkflowExecutions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null bulkArchiveWorkflows(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null bulkUnarchiveWorkflows(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null callConnectorTool(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null cancelBatchJob(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null cancelWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAdminApiKey(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAdminUserGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAdminUsers(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAdminWorkspace(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAgent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAgentsCompletion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAudioTranscription(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createAudioTranscriptionStream(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createBatchJob(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createCampaign(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createChatClassification(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createChatCompletion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createChatModeration(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createClassification(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createDataset(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createDatasetRecord(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createEmbedding(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createFimCompletion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createJudge(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createLibrary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createModeration(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createOcr(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createOrUpdateConnectorOrganizationCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createOrUpdateConnectorUserCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createOrUpdateConnectorWorkspaceCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createPrompt(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createPromptVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createSkill(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createSkillVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createSpeech(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null createVoice(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deactivateForConsumerConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAdminApiKey(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAdminInvite(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAdminUser(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAdminUserGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAdminWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAgent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAgentVersionAlias(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteAllConnectorUserCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteBatchJob(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteCampaign(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteConnectorOrganizationCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteConnectorUserCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteConnectorWorkspaceCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteDataset(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteDatasetRecord(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteDatasetRecords(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteFile(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteJudge(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteLibrary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteLibraryShare(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteModel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deletePrompt(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteSkill(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null deleteVoice(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null downloadFile(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null executeWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null executeWorkflowRegistration(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null exportDatasetToJsonl(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getCampaignById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getCampaignSelectedEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getCampaignStatusById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getCampaigns(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionEvent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionEventIds(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionFieldOptions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionFieldOptionsCounts(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getChatCompletionFields(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getConfigs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getConnectorAuthUrl(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getConnectorAuthenticationMethods(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasetById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasetImportTask(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasetImportTasks(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasetRecord(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasetRecords(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDatasets(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDeploymentLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getDeploymentSummaries(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getIdentity(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getJudgeById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getJudges(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getLogFieldOptions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getLogFields(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getRun(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getRunHistory(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSchedule(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSchedules(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSimilarChatCompletionEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSpanById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSpanEvaluationFieldOptions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSpanEvaluationFields(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSpanFieldOptions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getSpanFields(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getStreamEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getTraceById(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getTraceFieldOptions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getTraceFields(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getTraceSpans(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getVoice(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getVoiceSampleAudio(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionHistory(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionTraceEvents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionTraceInfo(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionTraceOtel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowExecutionTraceSummary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowMetrics(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowRegistration(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflowRegistrations(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null getWorkflows(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null inviteAdminUsers(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null judgeChatCompletionEvent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null judgeConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null judgeDatasetRecord(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminApiKeys(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminAuditLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminInvite(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminRateLimits(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminRoles(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminSpendLimits(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminUsage(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminUserGroups(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminUsers(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAdminWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAgentPages(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAgentVersionAliases(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAgentVersions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listAgents(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listBatchJobs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConnectors(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConnectorOrganizationCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConnectorTools(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConnectorUserCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConnectorWorkspaceCredentials(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConversationHistory(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConversationMessages(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listConversations(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listDeploymentWorkers(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listDeployments(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listFiles(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listLibraries(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listLibraryDocuments(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listLibraryShares(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listModels(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listOrganizations(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listPromptVersions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listPrompts(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listRuns(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listSkillVersions(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listSkills(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listVoices(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null listWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null patchLibrary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null patchLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null pauseSchedule(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null postDatasetRecordsFromCampaign(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null postDatasetRecordsFromDataset(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null postDatasetRecordsFromExplorer(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null postDatasetRecordsFromFile(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null postDatasetRecordsFromPlayground(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null provisionAdminGroupToWorkspace(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null queryWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null registerConfig(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null registerDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null removeAdminGroupFromWorkspace(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null removeAdminUsersFromGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null removeAdminUsersWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null reprocessLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null resetWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null restartConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null restartConversationStream(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null restartDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null resumeSchedule(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminGroupWorkspaceAssignments(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminNestedGroupsAdmin(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminScimSyncRun(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminUser(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminUserGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAdminUserGroupMembers(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAgent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveAgentVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveBatchJob(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveFile(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveFileSignedUrl(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibrary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibraryDocumentExtractedTextSignedUrl(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibraryDocumentSignedUrl(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibraryDocumentStatus(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveLibraryDocumentTextContent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveModel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrievePrompt(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrievePromptVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveSkill(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null retrieveSkillVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null scheduleWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null searchLatestSpanEvaluations(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null searchLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null searchSpanEvaluations(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null searchSpans(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null searchTraces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null setAdminNestedGroupsAdmin(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null shareConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null signalWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null startConversation(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null startConversationStream(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null startDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null stopDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null streamDeploymentLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null streamWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null streamWorkflowExecutionLogs(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null terminateWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null triggerAdminScimSync(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null triggerSchedule(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null unarchiveModel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null unarchiveWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null unregisterDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null unscheduleWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null unshareConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminGroupWorkspaceAssignment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminSpendLimits(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminUser(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminUserGroup(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminUserGroupOrganizationRole(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAdminWorkspaces(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAgent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateAgentVersion(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateConnector(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateDataset(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateDatasetRecordPayload(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateDatasetRecordProperties(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateDeployment(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateFineTunedModel(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateIndexMetrics(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateJudge(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateLibrary(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updatePrompt(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updatePromptVersionMetadata(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateRunInfo(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateSchedule(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateSkill(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateSkillVersionMetadata(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateVoice(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateWorkflow(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null updateWorkflowExecution(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null uploadFile(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null uploadLibraryDocument(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null upsertAgentVersionAlias(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null upsertLibraryShare(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null usageAdminByAgent(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null usageAdminByOrganization(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null usageAdminByUser(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null usageAdminByWorkspace(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * @method ResponseInterface|null usageAdminOverTime(array<string, mixed> $parametersOrBody = [], array<string, mixed>|callable|null $bodyOrCallback = [], ?callable $streamCallback = null)
+ * API METHODS END
  */
 class MistralAI
 {
-    /**
-     * Constructs a new instance of the MistralAI client.
-     *
-     * @param RequestFactoryInterface $requestFactory The PSR-17 request factory.
-     * @param StreamFactoryInterface  $streamFactory  The PSR-17 stream factory.
-     * @param UriFactoryInterface     $uriFactory     The PSR-17 URI factory.
-     * @param ClientInterface         $httpClient     The PSR-18 HTTP client.
-     * @param string                  $apiKey         Your MistralAI API key.
-     * @param string                  $origin         Custom API origin (hostname).
-     * @param string                  $apiVersion     Custom API version.
-     */
+    /** @var list<string> */
+    private const DEFAULT_FILE_FIELDS = [
+        'file',
+        'files',
+    ];
+
     public function __construct(
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
@@ -127,241 +354,324 @@ class MistralAI
         #[SensitiveParameter]
         private readonly string $apiKey,
         private readonly string $origin = '',
-        private readonly string $apiVersion = ''
+        private readonly string $apiVersion = '',
     ) {}
 
     /**
-     * Magic method to call the MistralAI API endpoints.
+     * Calls a registered endpoint by its SDK method name.
      *
-     * @param string $key The endpoint method.
-     * @param array $args The arguments for the endpoint method.
+     * @param array<int, mixed> $args
      *
-     * @return ResponseInterface|null The API response or null if streaming.
-     *
-     * @throws MistralAIException       If the API returns an error.
-     * @throws InvalidArgumentException If the parameters are invalid.
-     * @throws RandomException
+     * @throws MistralAIException If the API returns an error.
+     * @throws InvalidArgumentException If the endpoint or its arguments are invalid.
+     * @throws RandomException If multipart boundary generation fails.
+     * @throws Throwable If request body construction or streaming fails.
      */
     public function __call(string $key, array $args): ?ResponseInterface
     {
         $endpoint = MistralAIURLBuilder::getEndpoint($key);
-        $httpMethod = $endpoint['method'];
+        [$parameters, $body, $streamCallback, $customHeaders] = $this->extractCallArguments($args, $endpoint);
 
-        [$parameters, $opts, $streamCallback] = $this->extractCallArguments($endpoint, $args);
-
-        if (($endpoint['streaming'] ?? false) === true && ($opts['stream'] ?? false) !== true) {
-            $opts['stream'] = true;
-        }
-
-        return $this->callAPI($httpMethod, $key, $parameters, $opts, $streamCallback);
+        return $this->request($key, $parameters, $body, $streamCallback, $customHeaders);
     }
 
     /**
-     * Extracts the arguments from the input array.
+     * Sends a request using a registered endpoint name.
      *
-     * @param array $endpoint The endpoint configuration being called.
-     * @param array $args      The input arguments.
-     *
-     * @return array An array containing the extracted parameters, options, and stream callback.
-     *
-     * @throws InvalidArgumentException If the first argument is not an array.
-     */
-    private function extractCallArguments(array $endpoint, array $args): array
-    {
-        $parameters = [];
-        $opts = [];
-        $streamCallback = null;
-
-        if (!isset($args[0])) {
-            return [$parameters, $opts, $streamCallback];
-        }
-
-        if (!\is_array($args[0])) {
-            throw new InvalidArgumentException('First argument must be an array of parameters.');
-        }
-
-        $hasPathPlaceholders = \str_contains($endpoint['path'], '{');
-        $nextArgumentIndex = 1;
-
-        if ($hasPathPlaceholders) {
-            $parameters = $args[0];
-
-            if (isset($args[1]) && \is_array($args[1])) {
-                $opts = $args[1];
-                $nextArgumentIndex = 2;
-            }
-        } else {
-            $opts = $args[0];
-
-            if (isset($args[1]) && \is_array($args[1])) {
-                $parameters = $args[0];
-                $opts = $args[1];
-                $nextArgumentIndex = 2;
-            }
-        }
-
-        if (isset($args[$nextArgumentIndex]) && \is_callable($args[$nextArgumentIndex])) {
-            $streamCallback = $args[$nextArgumentIndex];
-        }
-
-        return [$parameters, $opts, $streamCallback];
-    }
-
-    /**
-     * Calls the MistralAI API with the provided method, key, parameters, and options.
-     *
-     * @param string $method The HTTP method for the request.
-     * @param string $key The API endpoint key.
-     * @param array $parameters Parameters for URL placeholders.
-     * @param array $opts The options for the request body or query.
-     * @param callable|null $streamCallback Callback function to handle streaming data.
-     *
-     * @return ResponseInterface|null The API response or null if streaming.
+     * @param array<string, mixed> $parameters Path and query parameters.
+     * @param array<string, mixed> $body JSON or multipart body fields.
+     * @param callable(array<string, mixed>):void|null $streamCallback SSE event callback.
+     * @param array<string, string|string[]> $customHeaders Additional request headers.
      *
      * @throws MistralAIException If the API returns an error.
-     * @throws RandomException
+     * @throws InvalidArgumentException If the endpoint or its parameters are invalid.
+     * @throws RandomException If multipart boundary generation fails.
+     * @throws Throwable If request body construction or streaming fails.
      */
-    private function callAPI(
-        string $method,
+    public function request(
         string $key,
         array $parameters = [],
-        array $opts = [],
-        ?callable $streamCallback = null
+        array $body = [],
+        ?callable $streamCallback = null,
+        array $customHeaders = [],
     ): ?ResponseInterface {
+        $endpoint = MistralAIURLBuilder::getEndpoint($key);
+        $pathParameters = $this->getPathParameters($endpoint['path']);
+        $pathKeys = \array_flip($pathParameters);
+        $pathValues = \array_intersect_key($parameters, $pathKeys);
+        $query = $endpoint['query'] ?? [];
+
+        foreach (\array_diff_key($parameters, $pathKeys) as $name => $value) {
+            $query[$name] = $value;
+        }
         $uri = MistralAIURLBuilder::createUrl(
             $this->uriFactory,
             $key,
-            $parameters,
+            $pathValues,
             $this->origin,
-            $this->apiVersion
+            $this->apiVersion,
         );
 
-        return $this->sendRequest($uri, $method, $opts, $streamCallback);
+        if ($query !== []) {
+            $uri = $uri->withQuery(\http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+        }
+
+        return $this->sendRequest(
+            $uri,
+            $endpoint['method'],
+            $endpoint,
+            $body,
+            $streamCallback,
+            $customHeaders,
+        );
     }
 
     /**
-     * Sends an HTTP request to the MistralAI API and returns the response.
+     * Normalizes the legacy two-array convention and the canonical body-first convention.
      *
-     * @param UriInterface $uri The URI to send the request to.
-     * @param string $method The HTTP method to use.
-     * @param array $params Parameters to include in the request body.
-     * @param callable|null $streamCallback Callback function to handle streaming data.
+     * @param array<int, mixed> $args
+     * @param array{method:string,path:string,body?:string,fileFields?:list<string>,headers?:array<string,string|string[]>,streaming?:bool}|null $endpoint
      *
-     * @return ResponseInterface|null The response from the MistralAI API or null if streaming.
+     * @return array{array<string,mixed>,array<string,mixed>,callable|null,array<string,string|string[]>}
+     *
+     * @throws InvalidArgumentException If the endpoint arguments are invalid.
+     */
+    private function extractCallArguments(array $args, ?array $endpoint = null): array
+    {
+        if (\count($args) > 3) {
+            throw new InvalidArgumentException('Endpoint calls accept at most three arguments.');
+        }
+
+        if (isset($args[0]) && !\is_array($args[0])) {
+            throw new InvalidArgumentException('First argument must be an array of parameters.');
+        }
+
+        $first = $args[0] ?? [];
+        $second = [];
+        $hasSecondArray = isset($args[1]) && \is_array($args[1]);
+        $streamCallback = null;
+
+        if ($hasSecondArray) {
+            $second = $args[1];
+        } elseif (isset($args[1])) {
+            if (!\is_callable($args[1])) {
+                throw new InvalidArgumentException('Second argument must be an array or callable.');
+            }
+
+            $streamCallback = $args[1];
+        }
+
+        if (isset($args[2])) {
+            if (!$hasSecondArray || !\is_callable($args[2])) {
+                throw new InvalidArgumentException('Third argument must be a stream callback.');
+            }
+
+            $streamCallback = $args[2];
+        }
+
+        $customHeaders = $this->extractCustomHeaders($first, $second);
+
+        // Keep the old helper shape usable by reflective consumers.
+        if ($endpoint === null) {
+            return [$first, $second, $streamCallback, $customHeaders];
+        }
+
+        $bodyType = $endpoint['body'] ?? $this->inferBodyType($endpoint['method'], $endpoint['path']);
+
+        if ($bodyType === 'none') {
+            return [$first + $second, [], $streamCallback, $customHeaders];
+        }
+
+        // Existing 3.x calls pass path/query parameters first and the body second.
+        if ($hasSecondArray) {
+            return [$first, $second, $streamCallback, $customHeaders];
+        }
+
+        $pathParameters = $this->getPathParameters($endpoint['path']);
+
+        if ($pathParameters === []) {
+            return [[], $first, $streamCallback, $customHeaders];
+        }
+
+        $pathKeys = \array_flip($pathParameters);
+
+        return [
+            \array_intersect_key($first, $pathKeys),
+            \array_diff_key($first, $pathKeys),
+            $streamCallback,
+            $customHeaders,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $first
+     * @param array<string, mixed> $second
+     *
+     * @return array<string, string|string[]>
+     *
+     * @throws InvalidArgumentException If customHeaders is not an array.
+     */
+    private function extractCustomHeaders(array &$first, array &$second): array
+    {
+        $headers = [];
+
+        foreach ([$first, $second] as $values) {
+            if (!isset($values['customHeaders'])) {
+                continue;
+            }
+
+            if (!\is_array($values['customHeaders'])) {
+                throw new InvalidArgumentException('customHeaders must be an array.');
+            }
+
+            foreach ($values['customHeaders'] as $name => $value) {
+                $headers[$name] = $value;
+            }
+        }
+
+        unset($first['customHeaders'], $second['customHeaders']);
+
+        return $headers;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function getPathParameters(string $path): array
+    {
+        \preg_match_all('/\{([A-Za-z_]\w*)}/', $path, $matches);
+
+        return $matches[1];
+    }
+
+    private function inferBodyType(string $method, string $path): string
+    {
+        if (\in_array($method, ['GET', 'DELETE'], true)) {
+            return 'none';
+        }
+
+        if (\in_array($path, [
+            '/audio/transcriptions',
+            '/files',
+            '/libraries/{library_id}/documents',
+        ], true)) {
+            return 'multipart';
+        }
+
+        return 'json';
+    }
+
+    /**
+     * @param array{path?:string,body?:string,fileFields?:list<string>,headers?:array<string,string|string[]>,streaming?:bool} $endpoint
+     * @param array<string, mixed> $body
+     * @param array<string, string|string[]> $customHeaders
      *
      * @throws MistralAIException If the API returns an error.
-     * @throws RandomException
+     * @throws RandomException If multipart boundary generation fails.
+     * @throws Throwable If request body construction or streaming fails.
      */
     private function sendRequest(
         UriInterface $uri,
         string $method,
-        array $params = [],
-        ?callable $streamCallback = null
-    ): ?ResponseInterface {
-        $queryParams = $params['_query'] ?? [];
+        array $endpoint,
+        array $body,
+        ?callable $streamCallback,
+        array $customHeaders,
+    ): ResponseInterface {
+        $bodyType = $endpoint['body'] ?? $this->inferBodyType($method, $endpoint['path'] ?? $uri->getPath());
+        $boundary = $body !== [] && $bodyType === 'multipart' ? $this->generateMultipartBoundary() : null;
+        $requestBody = $this->createRequestBody($bodyType, $body, $boundary, $endpoint['fileFields'] ?? []);
+        $contentType = null;
 
-        if (isset($params['_query'])) {
-            unset($params['_query']);
+        if ($requestBody !== null) {
+            $contentType = $bodyType === 'multipart'
+                ? "multipart/form-data; boundary={$boundary}"
+                : 'application/json';
         }
 
-        [$preparedUri, $body, $isMultipart, $boundary, $hasBody] = $this->prepareRequest(
-            $uri,
-            $method,
-            $params,
-            $queryParams
-        );
+        $headers = $endpoint['headers'] ?? [];
 
-        $request = $this->requestFactory->createRequest($method, $preparedUri);
-        $headers = $this->createHeaders($isMultipart, $boundary, $hasBody, $params);
-        $request = $this->applyHeaders($request, $headers);
-
-        if ($body !== '') {
-            $request = $request->withBody($this->streamFactory->createStream($body));
+        foreach ($customHeaders as $name => $value) {
+            $headers[$name] = $value;
         }
+
+        $request = $this->requestFactory->createRequest($method, $uri);
+        $request = $this->applyHeaders($request, $this->createHeaders($contentType, null, $headers));
+
+        if ($requestBody !== null) {
+            $request = $request->withBody($requestBody);
+        }
+
+        $isStreamingRequest = ($endpoint['streaming'] ?? false)
+            || ($body['stream'] ?? false) === true
+            || ($body['stream_format'] ?? null) === 'sse';
 
         try {
-            if ($streamCallback !== null && ($params['stream'] ?? false) === true) {
-                $this->handleStreamingResponse($request, $streamCallback);
-
-                return null;
-            }
-
-            $response = $this->httpClient->sendRequest($request);
-
-            if ($response->getStatusCode() >= 400) {
-                throw new MistralAIException($response->getBody()->getContents(), $response->getStatusCode());
-            }
-
-            return $response;
-        } catch (ClientExceptionInterface $e) {
-            throw new MistralAIException($e->getMessage(), $e->getCode(), $e);
+            $response = $isStreamingRequest && $this->httpClient instanceof StreamingClientInterface
+                ? $this->httpClient->sendStreamingRequest($request)
+                : $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $exception) {
+            throw new MistralAIException($exception->getMessage(), (int) $exception->getCode(), $exception);
         }
+
+        $this->throwForErrorResponse($response);
+
+        $isEventStream = \str_contains(\strtolower($response->getHeaderLine('Content-Type')), 'text/event-stream');
+        $streamRequested = $isStreamingRequest;
+
+        if ($streamCallback !== null && ($streamRequested || $isEventStream)) {
+            (new ServerSentEventDecoder())->decode($response->getBody(), $streamCallback);
+        }
+
+        return $response;
     }
 
     /**
-     * Handles a streaming response from the API.
+     * @param array<string, mixed> $body
+     * @param list<string> $fileFields
      *
-     * @param RequestInterface $request        The request to send.
-     * @param callable         $streamCallback The callback function to handle streaming data.
-     *
-     * @return void
-     *
-     * @throws MistralAIException If an error occurs during streaming.
+     * @throws MistralAIException If JSON encoding fails.
+     * @throws RandomException Retained for compatibility with the 3.x exception contract.
+     * @throws Throwable If multipart body construction fails.
      */
-    private function handleStreamingResponse(RequestInterface $request, callable $streamCallback): void
-    {
-        try {
-            $response = $this->httpClient->sendRequest($request);
-            $statusCode = $response->getStatusCode();
-
-            if ($statusCode >= 400) {
-                throw new MistralAIException($response->getBody()->getContents(), $statusCode);
-            }
-
-            $body = $response->getBody();
-            $buffer = '';
-
-            while (!$body->eof()) {
-                $chunk = $body->read(8192);
-                $buffer .= $chunk;
-
-                while (($newlinePos = \strpos($buffer, "\n")) !== false) {
-                    $line = \substr($buffer, 0, $newlinePos);
-                    $buffer = \substr($buffer, $newlinePos + 1);
-
-                    $data = \trim($line);
-
-                    if ($data === '') {
-                        continue;
-                    }
-
-                    if ($data === 'data: [DONE]') {
-                        return;
-                    }
-
-                    if (\str_starts_with($data, 'data: ')) {
-                        $json = \substr($data, 6);
-
-                        try {
-                            $decoded = \json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-                            $streamCallback($decoded);
-                        } catch (JsonException $e) {
-                            throw new MistralAIException('JSON decode error: ' . $e->getMessage(), 0, $e);
-                        }
-                    }
-                }
-            }
-        } catch (ClientExceptionInterface $e) {
-            throw new MistralAIException($e->getMessage(), $e->getCode(), $e);
+    private function createRequestBody(
+        string $bodyType,
+        array $body,
+        ?string $boundary,
+        array $fileFields,
+    ): ?StreamInterface {
+        if ($body === [] || $bodyType === 'none') {
+            return null;
         }
+
+        if ($bodyType === 'multipart') {
+            return $this->createMultipartStream($body, (string) $boundary, $fileFields);
+        }
+
+        return $this->streamFactory->createStream($this->createJsonBody($body));
     }
 
     /**
-     * Generates a unique multipart boundary string.
-     *
-     * @return string The generated multipart boundary string.
-     *
-     * @throws RandomException
+     * @throws MistralAIException If the API returns an error response.
+     */
+    private function throwForErrorResponse(ResponseInterface $response): void
+    {
+        if ($response->getStatusCode() < 400) {
+            return;
+        }
+
+        throw new MistralAIException(
+            $response->getBody()->getContents(),
+            $response->getStatusCode(),
+            null,
+            $response->getHeaderLine('x-request-id'),
+            $response->getHeaders(),
+        );
+    }
+
+    /**
+     * @throws Exception If the operating system cannot provide random bytes.
+     * @throws RandomException Retained for compatibility with the 3.x exception contract.
      */
     private function generateMultipartBoundary(): string
     {
@@ -369,40 +679,35 @@ class MistralAI
     }
 
     /**
-     * Creates the headers for an API request.
+     * The bool form is retained for backwards compatibility with reflective test helpers.
      *
-     * @param bool        $isMultipart Indicates whether the request is multipart.
-     * @param string|null $boundary    The multipart boundary string, if applicable.
-     * @param bool        $hasBody     Whether the request contains a body payload.
-     * @param array       $params      The request parameters to inspect for streaming flags.
-     *
-     * @return array An associative array of headers.
+     * @param bool|string|null $contentType
+     * @param string|null $boundary
+     * @param array<string, string|string[]> $customHeaders
+     * @return array<string, string|string[]>
      */
-    private function createHeaders(bool $isMultipart, ?string $boundary, bool $hasBody, array $params): array
-    {
-        $headers = [
-            'Authorization' => 'Bearer ' . $this->apiKey,
-            'Accept' => ($params['stream'] ?? false) === true
-                ? 'text/event-stream'
-                : 'application/json',
-        ];
-
-        if ($hasBody) {
-            $headers['Content-Type'] = $isMultipart
+    private function createHeaders(
+        bool|string|null $contentType,
+        ?string $boundary = null,
+        array $customHeaders = [],
+    ): array {
+        if (\is_bool($contentType)) {
+            $contentType = $contentType
                 ? "multipart/form-data; boundary={$boundary}"
                 : 'application/json';
         }
 
-        return $headers;
+        $headers = ['Authorization' => 'Bearer ' . $this->apiKey];
+
+        if ($contentType !== null) {
+            $headers['Content-Type'] = $contentType;
+        }
+
+        return \array_replace($headers, $customHeaders);
     }
 
     /**
-     * Applies the headers to the given request.
-     *
-     * @param RequestInterface $request The request to apply headers to.
-     * @param array            $headers An associative array of headers to apply.
-     *
-     * @return RequestInterface The request with headers applied.
+     * @param array<string, string|string[]> $headers
      */
     private function applyHeaders(RequestInterface $request, array $headers): RequestInterface
     {
@@ -414,129 +719,32 @@ class MistralAI
     }
 
     /**
-     * Creates a JSON-encoded body string from the given parameters.
-     *
-     * @param array $params An associative array of parameters to encode as JSON.
-     *
-     * @return string The JSON-encoded body string.
+     * @param array<string, mixed> $params
      *
      * @throws MistralAIException If JSON encoding fails.
      */
     private function createJsonBody(array $params): string
     {
-        if (empty($params)) {
-            return '';
-        }
-
         try {
             return \json_encode($params, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
-            throw new MistralAIException('JSON encode error: ' . $e->getMessage(), 0, $e);
+        } catch (JsonException $exception) {
+            throw new MistralAIException('JSON encode error: ' . $exception->getMessage(), 0, $exception);
         }
     }
 
     /**
-     * Creates a multipart stream for sending files in a request.
+     * @param array<string, mixed> $params
+     * @param list<string> $fileFields
      *
-     * @param array  $params   An associative array of parameters to send with the request.
-     * @param string $boundary A string used as a boundary to separate parts of the multipart stream.
-     *
-     * @return string The multipart stream as a string.
+     * @throws RandomException Retained for compatibility with the 3.x exception contract.
+     * @throws Throwable If multipart body construction fails.
      */
-    private function createMultipartStream(array $params, string $boundary): string
+    private function createMultipartStream(array $params, string $boundary, array $fileFields = []): StreamInterface
     {
-        $multipartStream = '';
-
-        foreach ($params as $key => $value) {
-            $multipartStream .= "--{$boundary}\r\n";
-            $multipartStream .= "Content-Disposition: form-data; name=\"{$key}\"";
-
-            if ($key === 'file' && \is_string($value) && \file_exists($value)) {
-                $filename = \basename($value);
-                $fileContents = \file_get_contents($value);
-                $multipartStream .= "; filename=\"{$filename}\"\r\n";
-                $multipartStream .= "Content-Type: application/octet-stream\r\n\r\n";
-                $multipartStream .= "{$fileContents}\r\n";
-            } else {
-                if (\is_bool($value)) {
-                    $value = $value ? 'true' : 'false';
-                }
-
-                $multipartStream .= "\r\n\r\n{$value}\r\n";
-            }
+        if ($fileFields === []) {
+            $fileFields = self::DEFAULT_FILE_FIELDS;
         }
 
-        $multipartStream .= "--{$boundary}--\r\n";
-
-        return $multipartStream;
-    }
-
-    /**
-     * Determines if a request is a multipart request based on the provided parameters.
-     *
-     * @param array $params An associative array of parameters to check.
-     *
-     * @return bool True if the request is a multipart request, false otherwise.
-     */
-    private function isMultipartRequest(array $params): bool
-    {
-        foreach (['file', 'file_url', 'file_id'] as $multipartKey) {
-            if (\array_key_exists($multipartKey, $params)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Prepares the request URI and body payload for the HTTP client.
-     *
-     * @param UriInterface $uri         The base URI for the request.
-     * @param string       $method      The HTTP method to use.
-     * @param array        $params      The parameters provided by the caller.
-     * @param array        $queryParams Additional query parameters to append to the URI.
-     *
-     * @return array{0: UriInterface, 1: string, 2: bool, 3: string|null, 4: bool} The prepared URI, body, multipart flag, boundary, and body presence flag.
-     *
-     * @throws MistralAIException
-     * @throws RandomException
-     */
-    private function prepareRequest(
-        UriInterface $uri,
-        string $method,
-        array $params,
-        array $queryParams = []
-    ): array {
-        $normalizedMethod = \strtoupper($method);
-        $allowsBody = \in_array($normalizedMethod, ['POST', 'PUT', 'PATCH'], true);
-
-        $bodyParams = $allowsBody ? $params : [];
-        $query = $allowsBody ? $queryParams : \array_merge($params, $queryParams);
-
-        if (!empty($query)) {
-            $queryString = \http_build_query($query, '', '&', PHP_QUERY_RFC3986);
-
-            if ($queryString !== '') {
-                $existingQuery = $uri->getQuery();
-                $uri = $uri->withQuery($existingQuery !== '' ? $existingQuery . '&' . $queryString : $queryString);
-            }
-        }
-
-        $isMultipart = $this->isMultipartRequest($bodyParams);
-        $boundary = $isMultipart ? $this->generateMultipartBoundary() : null;
-
-        $body = '';
-
-        if (!empty($bodyParams)) {
-            if ($isMultipart) {
-                $boundary ??= $this->generateMultipartBoundary();
-                $body = $this->createMultipartStream($bodyParams, $boundary);
-            } else {
-                $body = $this->createJsonBody($bodyParams);
-            }
-        }
-
-        return [$uri, $body, $isMultipart, $boundary, !empty($bodyParams)];
+        return (new MultipartBodyBuilder($this->streamFactory))->build($params, $boundary, $fileFields);
     }
 }

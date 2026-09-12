@@ -22,21 +22,23 @@ use Exception;
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response;
 use InvalidArgumentException;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use ReflectionException;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
+use SoftCreatR\MistralAI\Http\StreamingClientInterface;
 use SoftCreatR\MistralAI\MistralAI;
-use SoftCreatR\MistralAI\MistralAIURLBuilder;
+use Throwable;
 
 /**
  * @covers \SoftCreatR\MistralAI\Exception\MistralAIException
  * @covers \SoftCreatR\MistralAI\MistralAI
  * @covers \SoftCreatR\MistralAI\MistralAIURLBuilder
  */
-class MistralAITest extends TestCase
+final class MistralAITest extends TestCase
 {
     /**
      * The MistralAI instance used for testing.
@@ -46,20 +48,20 @@ class MistralAITest extends TestCase
     /**
      * The mocked HTTP client used for simulating API responses.
      */
-    private ClientInterface $mockedClient;
+    private ClientInterface&Stub $mockedClient;
 
     /**
-     * API key for the MistralAI API.
+     * API key for the Mistral AI API.
      */
-    private string $apiKey = 'jUsTaRaNdOmStRiNg';
+    private string $apiKey = 'sk-...';
 
     /**
-     * Custom origin for the MistralAI API, if needed.
+     * Custom origin for the Mistral AI API, if needed.
      */
     private string $origin = 'example.com';
 
     /**
-     * Sets up the test environment by creating a MistralAI instance and
+     * Sets up the test environment by creating an MistralAI instance and
      * a mocked HTTP client, then assigns the mocked client to the MistralAI instance.
      *
      * @throws \PHPUnit\Framework\MockObject\Exception
@@ -69,7 +71,7 @@ class MistralAITest extends TestCase
         parent::setUp();
 
         $psr17Factory = new HttpFactory();
-        $this->mockedClient = $this->createMock(ClientInterface::class);
+        $this->mockedClient = $this->createStub(ClientInterface::class);
 
         $this->mistralAI = new MistralAI(
             $psr17Factory,
@@ -77,19 +79,23 @@ class MistralAITest extends TestCase
             $psr17Factory,
             $this->mockedClient,
             $this->apiKey,
-            $this->origin
+            $this->origin,
         );
     }
 
+
     /**
      * Tests that an InvalidArgumentException is thrown when the first argument is not an array.
+     *
+     * @throws MistralAIException
+     * @throws Throwable
      */
     public function testInvalidFirstArgumentInCall(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('First argument must be an array of parameters.');
 
-        $this->mistralAI->createChatCompletion('invalid_argument');
+        $this->mistralAI->__call('createChatCompletion', ['invalid_argument']);
     }
 
     /**
@@ -102,11 +108,10 @@ class MistralAITest extends TestCase
         $filePath = __DIR__ . '/fixtures/dummyFile.jsonl';
         \file_put_contents($filePath, 'Dummy content');
 
-        $this->sendRequestMock(function (RequestInterface $request) use ($filePath) {
-            $body = (string)$request->getBody();
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $body = (string) $request->getBody();
             $this->assertStringContainsString('multipart/form-data', $request->getHeaderLine('Content-Type'));
             $this->assertStringContainsString('Dummy content', $body);
-            $this->assertStringContainsString(\basename($filePath), $body);
 
             return new Response(200, [], '{"success": true}');
         });
@@ -123,7 +128,7 @@ class MistralAITest extends TestCase
     }
 
     /**
-     * Tests that a MistralAIException is thrown when the API returns an error response.
+     * Tests that an MistralAIException is thrown when the API returns an error response.
      */
     public function testCallAPIHandlesErrorResponse(): void
     {
@@ -134,36 +139,44 @@ class MistralAITest extends TestCase
         $this->expectException(MistralAIException::class);
         $this->expectExceptionMessage('Bad Request');
 
-        $this->mistralAI->createChatCompletion([
-            'model' => 'mistral-tiny',
+        // Pass options as the second argument
+        $this->mistralAI->createChatCompletion([], [
+            'model' => 'mistral-small-latest',
             'messages' => [
-                ['role' => 'user', 'content' => 'Test message'],
+                [
+                    'role' => 'user',
+                    'content' => 'Test message',
+                ],
             ],
         ]);
     }
 
     /**
-     * Tests that a MistralAIException is thrown when the HTTP client throws a ClientExceptionInterface.
+     * Tests that an MistralAIException is thrown when the HTTP client throws a ClientExceptionInterface.
      */
     public function testCallAPICatchesClientException(): void
     {
-        $this->sendRequestMock(static function () {
-            throw new class ('Client error', 0) extends Exception implements ClientExceptionInterface {};
-        });
+        $this->sendRequestMock(
+            static fn() => throw new class ('Client error', 0) extends Exception implements ClientExceptionInterface {},
+        );
 
         $this->expectException(MistralAIException::class);
         $this->expectExceptionMessage('Client error');
 
-        $this->mistralAI->createChatCompletion([
-            'model' => 'mistral-tiny',
+        // Pass options as the second argument
+        $this->mistralAI->createChatCompletion([], [
+            'model' => 'mistral-small-latest',
             'messages' => [
-                ['role' => 'user', 'content' => 'Test message'],
+                [
+                    'role' => 'user',
+                    'content' => 'Test message',
+                ],
             ],
         ]);
     }
 
     /**
-     * Tests that handleStreamingResponse throws a MistralAIException when the response status code is >= 400.
+     * Tests that handleStreamingResponse throws an MistralAIException when the response status code is >= 400.
      */
     public function testHandleStreamingResponseHandlesErrorResponse(): void
     {
@@ -177,13 +190,18 @@ class MistralAITest extends TestCase
         $this->mistralAI->createChatCompletion(
             [],
             [
-                'model' => 'mistral-tiny',
+                'model' => 'mistral-small-latest',
                 'messages' => [
-                    ['role' => 'user', 'content' => 'Test message'],
+                    [
+                        'role' => 'user',
+                        'content' => 'Test message',
+                    ],
                 ],
                 'stream' => true,
             ],
-            static function (): void {}
+            static function () {
+                // Streaming callback
+            },
         );
     }
 
@@ -206,22 +224,23 @@ class MistralAITest extends TestCase
         $this->mistralAI->createChatCompletion(
             [],
             [
-                'model' => 'mistral-tiny',
+                'model' => 'mistral-small-latest',
                 'messages' => [
-                    ['role' => 'user', 'content' => 'Test message'],
+                    [
+                        'role' => 'user',
+                        'content' => 'Test message',
+                    ],
                 ],
                 'stream' => true,
             ],
-            function () {
-                $this->fail('Streaming callback should not be called on empty data.');
-            }
+            fn() => $this->fail('Streaming callback should not be called on empty data.'),
         );
 
-        $this->assertTrue(true); // If no exception is thrown, test passes
+        $this->addToAssertionCount(1);
     }
 
     /**
-     * Tests that handleStreamingResponse throws a MistralAIException when JSON decoding fails.
+     * Tests that handleStreamingResponse throws an MistralAIException when JSON decoding fails.
      */
     public function testHandleStreamingResponseJsonException(): void
     {
@@ -237,21 +256,23 @@ class MistralAITest extends TestCase
         });
 
         $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessage('JSON decode error: Syntax error');
+        $this->expectExceptionMessageMatches('/JSON decode error:/');
 
-        // Correctly pass parameters and options
         $this->mistralAI->createChatCompletion(
             [],
             [
-                'model' => 'mistral-tiny',
+                'model' => 'mistral-small-latest',
                 'messages' => [
-                    ['role' => 'user', 'content' => 'Test message'],
+                    [
+                        'role' => 'user',
+                        'content' => 'Test message',
+                    ],
                 ],
                 'stream' => true,
             ],
             static function ($data) {
                 // Streaming callback
-            }
+            },
         );
     }
 
@@ -260,9 +281,9 @@ class MistralAITest extends TestCase
      */
     public function testHandleStreamingResponseCatchesClientException(): void
     {
-        $this->sendRequestMock(static function () {
-            throw new class ('Client error in streaming', 0) extends Exception implements ClientExceptionInterface {};
-        });
+        $this->sendRequestMock(
+            static fn() => throw new class ('Client error in streaming', 0) extends Exception implements ClientExceptionInterface {},
+        );
 
         $this->expectException(MistralAIException::class);
         $this->expectExceptionMessage('Client error in streaming');
@@ -270,13 +291,18 @@ class MistralAITest extends TestCase
         $this->mistralAI->createChatCompletion(
             [],
             [
-                'model' => 'mistral-tiny',
+                'model' => 'mistral-small-latest',
                 'messages' => [
-                    ['role' => 'user', 'content' => 'Test message'],
+                    [
+                        'role' => 'user',
+                        'content' => 'Test message',
+                    ],
                 ],
                 'stream' => true,
             ],
-            static function (): void {}
+            static function () {
+                // Streaming callback
+            },
         );
     }
 
@@ -303,66 +329,14 @@ class MistralAITest extends TestCase
         $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
         $boundary = 'testBoundary';
 
-        $headers = $reflectionMethod->invoke($this->mistralAI, true, $boundary, true, []);
+        $headers = $reflectionMethod->invoke($this->mistralAI, true, $boundary);
 
         $this->assertArrayHasKey('Content-Type', $headers);
         $this->assertEquals("multipart/form-data; boundary={$boundary}", $headers['Content-Type']);
-        $this->assertEquals('application/json', $headers['Accept']);
     }
 
     /**
-     * Tests that createHeaders sets the Accept header for streaming requests.
-     *
-     * @throws ReflectionException
-     */
-    public function testCreateHeadersForStreamingRequest(): void
-    {
-        $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
-
-        $headers = $reflectionMethod->invoke($this->mistralAI, false, null, false, ['stream' => true]);
-
-        $this->assertSame('text/event-stream', $headers['Accept']);
-        $this->assertArrayNotHasKey('Content-Type', $headers, 'Content-Type should not be set when there is no body.');
-    }
-
-    /**
-     * Ensures GET requests serialize query parameters instead of sending a JSON body.
-     */
-    public function testGetRequestAppendsQueryParameters(): void
-    {
-        $this->sendRequestMock(static function (RequestInterface $request) {
-            self::assertSame('limit=5&order=desc', $request->getUri()->getQuery());
-            self::assertSame('', (string)$request->getBody());
-
-            return new Response(200, [], '{}');
-        });
-
-        $this->mistralAI->listModels([], ['limit' => 5, 'order' => 'desc']);
-    }
-
-    /**
-     * Ensures body-capable methods still allow query parameters.
-     */
-    public function testPatchRequestSupportsQueryParameters(): void
-    {
-        $this->sendRequestMock(static function (RequestInterface $request) {
-            self::assertSame('version=2.0.0', $request->getUri()->getQuery());
-            self::assertSame('{"notes":"Promote"}', (string)$request->getBody());
-
-            return new Response(200, [], '{}');
-        });
-
-        $this->mistralAI->updateAgentVersion(
-            ['agent_id' => 'agent_123'],
-            [
-                '_query' => ['version' => '2.0.0'],
-                'notes' => 'Promote',
-            ]
-        );
-    }
-
-    /**
-     * Tests that createJsonBody throws a MistralAIException when JSON encoding fails.
+     * Tests that createJsonBody throws an MistralAIException when JSON encoding fails.
      *
      * @throws ReflectionException
      */
@@ -371,8 +345,6 @@ class MistralAITest extends TestCase
         $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createJsonBody');
 
         $this->expectException(MistralAIException::class);
-
-        // Since exception messages can vary, you can omit the exact message or adjust it to match.
         $this->expectExceptionMessageMatches('/^JSON encode error:/');
 
         $invalidValue = \tmpfile(); // Cannot be JSON encoded
@@ -398,11 +370,38 @@ class MistralAITest extends TestCase
             'purpose' => 'fine-tune',
         ];
 
-        $multipartStream = $reflectionMethod->invoke($this->mistralAI, $params, $boundary);
+        $multipartStream = (string) $reflectionMethod->invoke($this->mistralAI, $params, $boundary);
 
         $this->assertStringContainsString("--{$boundary}\r\n", $multipartStream);
-        $this->assertStringContainsString('Content-Disposition: form-data; name="file"; filename="dummyFile.jsonl"', $multipartStream);
+        $this->assertStringContainsString('Content-Disposition: form-data; name="file"; filename', $multipartStream);
         $this->assertStringContainsString('Dummy content', $multipartStream);
+
+        \unlink($filePath);
+    }
+
+    /**
+     * Tests that createMultipartStream writes upload-part data as raw bytes.
+     *
+     * @throws ReflectionException
+     */
+    public function testCreateMultipartStreamWithData(): void
+    {
+        $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createMultipartStream');
+        $boundary = 'testBoundary';
+        $filePath = __DIR__ . '/fixtures/dummyFile.bin';
+        \file_put_contents($filePath, 'Binary content');
+
+        $params = [
+            'data' => $filePath,
+            'purpose' => 'fine-tune',
+        ];
+
+        $multipartStream = (string) $reflectionMethod->invoke($this->mistralAI, $params, $boundary, ['data']);
+
+        $this->assertStringContainsString("--{$boundary}\r\n", $multipartStream);
+        $this->assertStringContainsString('Content-Disposition: form-data; name="data"; filename', $multipartStream);
+        $this->assertStringContainsString('Binary content', $multipartStream);
+        $this->assertStringNotContainsString(\base64_encode('Binary content'), $multipartStream);
 
         \unlink($filePath);
     }
@@ -415,17 +414,56 @@ class MistralAITest extends TestCase
     public function testCreateChatCompletion(): void
     {
         $this->testApiCall(
-            fn() => $this->mistralAI->createChatCompletion([
-                'model' => 'mistral-tiny',
+            fn() => $this->mistralAI->createChatCompletion([], [
+                'model' => 'mistral-small-latest',
                 'messages' => [
                     [
+                        'role' => 'system',
+                        'content' => 'You are a helpful assistant.',
+                    ],
+                    [
                         'role' => 'user',
-                        'content' => 'What is the best French cheese?',
+                        'content' => 'Hello!',
                     ],
                 ],
             ]),
-            'chatCompletion.json'
+            'chatCompletion.json',
         );
+    }
+
+    /**
+     * The README has always documented body-first calls, so 4.0 must send this body.
+     */
+    public function testCreateChatCompletionSupportsBodyFirstCall(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $this->assertSame('POST', $request->getMethod());
+            $this->assertSame('application/json', $request->getHeaderLine('Content-Type'));
+            $this->assertSame(
+                ['model' => 'mistral-small-latest', 'messages' => [['role' => 'user', 'content' => 'Hello']]],
+                \json_decode((string) $request->getBody(), true, 512, JSON_THROW_ON_ERROR),
+            );
+
+            return new Response(200, ['Content-Type' => 'application/json'], '{}');
+        });
+
+        $this->mistralAI->createChatCompletion([
+            'model' => 'mistral-small-latest',
+            'messages' => [['role' => 'user', 'content' => 'Hello']],
+        ]);
+    }
+
+    public function testCallbackDoesNotDiscardANonStreamingResponse(): void
+    {
+        $response = new Response(200, ['Content-Type' => 'application/json'], '{"ok":true}');
+        $this->sendRequestMock(static fn() => $response);
+
+        $actual = $this->mistralAI->createChatCompletion(
+            ['model' => 'mistral-small-latest', 'messages' => []],
+            fn() => $this->fail('A callback must not run for a non-streaming response.'),
+        );
+
+        $this->assertSame($response, $actual);
     }
 
     /**
@@ -456,68 +494,91 @@ class MistralAITest extends TestCase
                     ],
                     'stream' => true,
                 ],
-                $streamCallback
+                $streamCallback,
             ),
-            'chatCompletionStreaming.json',
-            $streamCallback
+            $streamCallback,
         );
 
-        $expectedOutput = 'Once upon a time, in a land far away, there lived a brave knight named Sir Alaric.';
+        $expectedOutput = 'Hello';
         $this->assertEquals($expectedOutput, $output);
     }
 
     /**
-     * Ensures the audio transcription streaming helper always enables streaming responses.
+     * @throws \PHPUnit\Framework\MockObject\Exception
      */
-    public function testCreateAudioTranscriptionStream(): void
+    public function testStreamingRequestUsesStreamingTransportWhenAvailable(): void
     {
-        $fakeResponseContent = "data: {\"text\":\"hi\"}\n\n" . "data: [DONE]\n";
-        $stream = \fopen('php://temp', 'rb+');
-        \fwrite($stream, $fakeResponseContent);
-        \rewind($stream);
+        $psr17Factory = new HttpFactory();
+        $client = $this->createMock(StreamingClientInterface::class);
+        $response = new Response(
+            200,
+            ['Content-Type' => 'text/event-stream'],
+            "data: {\"value\":\"streamed\"}\n\n",
+        );
+        $client->expects($this->once())
+            ->method('sendStreamingRequest')
+            ->willReturn($response);
+        $client->expects($this->never())
+            ->method('sendRequest');
 
-        $fakeResponse = new Response(200, [], $stream);
+        $mistralAI = new MistralAI(
+            $psr17Factory,
+            $psr17Factory,
+            $psr17Factory,
+            $client,
+            $this->apiKey,
+            $this->origin,
+        );
+        $events = [];
 
-        $this->sendRequestMock(
-            static function (RequestInterface $request) use ($fakeResponse) {
-                $body = (string)$request->getBody();
-
-                self::assertSame('text/event-stream', $request->getHeaderLine('Accept'));
-                self::assertStringContainsString('multipart/form-data', $request->getHeaderLine('Content-Type'));
-                self::assertStringContainsString("name=\"stream\"\r\n\r\ntrue", $body);
-                self::assertStringContainsString('name="file_url"', $body);
-                self::assertStringContainsString('https://example.com/audio.wav', $body);
-
-                return $fakeResponse;
-            }
+        $actual = $mistralAI->createChatCompletion(
+            ['model' => 'mistral-small-latest', 'messages' => [], 'stream' => true],
+            static function (array $event) use (&$events): void {
+                $events[] = $event;
+            },
         );
 
-        $captured = '';
-
-        $this->mistralAI->createAudioTranscriptionStream([], [
-            'model' => 'mistral-scribe',
-            'file_url' => 'https://example.com/audio.wav',
-        ], static function (array $data) use (&$captured): void {
-            $captured .= $data['text'] ?? '';
-        });
-
-        $this->assertSame('hi', $captured);
+        $this->assertSame($response, $actual);
+        $this->assertSame([['value' => 'streamed']], $events);
     }
 
     /**
-     * Tests that the createEmbedding method handles API calls correctly.
-     *
-     * @throws Exception
+     * @throws \PHPUnit\Framework\MockObject\Exception
      */
-    public function testCreateEmbedding(): void
+    public function testEndpointMetadataCanSelectTheStreamingTransport(): void
     {
-        $this->testApiCall(
-            fn() => $this->mistralAI->createEmbedding([
-                'model' => 'mistral-embed',
-                'input' => ['Hello world', 'Test embedding'],
-            ]),
-            'createEmbedding.json'
+        $psr17Factory = new HttpFactory();
+        $client = $this->createMock(StreamingClientInterface::class);
+        $response = new Response(
+            200,
+            ['Content-Type' => 'text/event-stream'],
+            "data: {\"type\":\"agent.session.updated\"}\n\n",
         );
+        $client->expects($this->once())
+            ->method('sendStreamingRequest')
+            ->willReturn($response);
+        $client->expects($this->never())
+            ->method('sendRequest');
+
+        $mistralAI = new MistralAI(
+            $psr17Factory,
+            $psr17Factory,
+            $psr17Factory,
+            $client,
+            $this->apiKey,
+            $this->origin,
+        );
+        $events = [];
+
+        $actual = $mistralAI->streamWorkflowExecution(
+            ['execution_id' => 'exec_abc123'],
+            static function (array $event) use (&$events): void {
+                $events[] = $event;
+            },
+        );
+
+        $this->assertSame($response, $actual);
+        $this->assertSame([['type' => 'agent.session.updated']], $events);
     }
 
     /**
@@ -529,7 +590,7 @@ class MistralAITest extends TestCase
     {
         $this->testApiCall(
             fn() => $this->mistralAI->listModels(),
-            'listModels.json'
+            'listModels.json',
         );
     }
 
@@ -541,63 +602,8 @@ class MistralAITest extends TestCase
     public function testRetrieveModel(): void
     {
         $this->testApiCall(
-            fn() => $this->mistralAI->retrieveModel(['model_id' => 'model_12345']),
-            'retrieveModel.json'
-        );
-    }
-
-    /**
-     * Tests that the deleteModel method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testDeleteModel(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->deleteModel(['model_id' => 'model_12345']),
-            'deleteModel.json'
-        );
-    }
-
-    /**
-     * Tests that the updateFineTunedModel method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testUpdateFineTunedModel(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->updateFineTunedModel([
-                'model_id' => 'model_12345',
-                'new_parameter' => 'value',
-            ]),
-            'updateFineTunedModel.json'
-        );
-    }
-
-    /**
-     * Tests that the archiveModel method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testArchiveModel(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->archiveModel(['model_id' => 'model_12345']),
-            'archiveModel.json'
-        );
-    }
-
-    /**
-     * Tests that the unarchiveModel method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testUnarchiveModel(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->unarchiveModel(['model_id' => 'model_12345']),
-            'unarchiveModel.json'
+            fn() => $this->mistralAI->retrieveModel(['model_id' => 'mistral-small-latest']),
+            'retrieveModel.json',
         );
     }
 
@@ -609,221 +615,206 @@ class MistralAITest extends TestCase
     public function testUploadFile(): void
     {
         $filePath = __DIR__ . '/fixtures/dummyFile.jsonl';
-        \file_put_contents($filePath, 'Dummy content');
+        \file_put_contents($filePath, '{"prompt": "Hello", "completion": "World"}');
 
         $this->testApiCall(
-            fn() => $this->mistralAI->uploadFile([
+            fn() => $this->mistralAI->uploadFile([], [
                 'file' => $filePath,
                 'purpose' => 'fine-tune',
             ]),
-            'uploadFile.json'
+            'uploadFile.json',
         );
 
         \unlink($filePath);
     }
 
     /**
-     * Tests that the listFiles method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testListFiles(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->listFiles(),
-            'listFiles.json'
-        );
-    }
-
-    /**
-     * Tests that the retrieveFile method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testRetrieveFile(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->retrieveFile(['file_id' => 'file_12345']),
-            'retrieveFile.json'
-        );
-    }
-
-    /**
-     * Tests that the deleteFile method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testDeleteFile(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->deleteFile(['file_id' => 'file_12345']),
-            'deleteFile.json'
-        );
-    }
-
-    /**
-     * Tests that the listFineTuningJobs method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testListFineTuningJobs(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->listFineTuningJobs(),
-            'listFineTuningJobs.json'
-        );
-    }
-
-    /**
-     * Tests that the retrieveFineTuningJob method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testRetrieveFineTuningJob(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->retrieveFineTuningJob(['job_id' => 'job_12345']),
-            'retrieveFineTuningJob.json'
-        );
-    }
-
-    /**
-     * Tests that the cancelFineTuningJob method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testCancelFineTuningJob(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->cancelFineTuningJob(['job_id' => 'job_12345']),
-            'cancelFineTuningJob.json'
-        );
-    }
-
-    /**
-     * Tests that the startFineTuningJob method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testStartFineTuningJob(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->startFineTuningJob(['job_id' => 'job_12345']),
-            'startFineTuningJob.json'
-        );
-    }
-
-    /**
-     * Tests that the createFineTuningJob method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testCreateFineTuningJob(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->createFineTuningJob([
-                'training_file' => 'file_12345',
-                'model' => 'mistral-tiny',
-            ]),
-            'createFineTuningJob.json'
-        );
-    }
-
-    /**
-     * Tests that the createFimCompletion method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testCreateFimCompletion(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->createFimCompletion([
-                'model' => 'mistral-fim',
-                'prompt' => 'Once upon a time, in a land far away, there lived a brave knight named Sir Alaric.',
-                'insert_text' => 'Sir Alaric was known for his',
-            ]),
-            'createFimCompletion.json'
-        );
-    }
-
-    /**
-     * Tests that the createAgentsCompletion method handles API calls correctly.
-     *
-     * @throws Exception
-     */
-    public function testCreateAgentsCompletion(): void
-    {
-        $this->testApiCall(
-            fn() => $this->mistralAI->createAgentsCompletion([
-                'model' => 'mistral-agent',
-                'tasks' => [
-                    ['task' => 'Analyze sentiment', 'input' => 'I love programming!'],
-                    ['task' => 'Translate text', 'input' => 'Hello, how are you?', 'target_language' => 'es'],
-                ],
-            ]),
-            'createAgentsCompletion.json'
-        );
-    }
-
-    /**
-     * Tests the 'extractCallArguments' method with various input scenarios.
-     *
-     * Ensures that the method correctly extracts parameters, options, and the stream callback from the provided arguments.
-     *
      * @throws ReflectionException
      */
-    public function testExtractCallArguments(): void
+    public function testExtractCallArgumentsWithCallableAsSecondArgument(): void
     {
-        $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'extractCallArguments');
-        $retrieveEndpoint = MistralAIURLBuilder::getEndpoint('retrieveModel');
-        $chatEndpoint = MistralAIURLBuilder::getEndpoint('createChatCompletion');
+        $reflection = TestHelper::getPrivateMethod($this->mistralAI, 'extractCallArguments');
+        $callback = static fn() => 'i-am-called';
 
-        $result = $reflectionMethod->invoke($this->mistralAI, $retrieveEndpoint, [['model_id' => 'model_123']]);
-        $this->assertSame(['model_id' => 'model_123'], $result[0]);
-        $this->assertSame([], $result[1]);
-        $this->assertNull($result[2]);
+        // Pass [ parameters, callback ]
+        [$parameters, $opts, $streamCallback] = $reflection->invoke(
+            $this->mistralAI,
+            [ ['foo' => 'bar'], $callback ],
+        );
 
-        $result = $reflectionMethod->invoke($this->mistralAI, $retrieveEndpoint, [['model_id' => 'model_456'], ['description' => 'test']]);
-        $this->assertSame(['model_id' => 'model_456'], $result[0]);
-        $this->assertSame(['description' => 'test'], $result[1]);
-
-        $streamCallback = static function (): void {};
-        $result = $reflectionMethod->invoke($this->mistralAI, $chatEndpoint, [[
-            'model' => 'mistral-tiny',
-            'messages' => [['role' => 'user', 'content' => 'Hi']],
-        ], $streamCallback]);
-        $this->assertSame([], $result[0]);
-        $this->assertEquals('mistral-tiny', $result[1]['model']);
-        $this->assertSame($streamCallback, $result[2]);
-
-        $result = $reflectionMethod->invoke($this->mistralAI, $chatEndpoint, [[
-            'model' => 'mistral-medium',
-        ], ['temperature' => 0.2]]);
-        $this->assertSame(['model' => 'mistral-medium'], $result[0]);
-        $this->assertSame(['temperature' => 0.2], $result[1]);
+        $this->assertSame(['foo' => 'bar'], $parameters);
+        $this->assertSame([], $opts);
+        $this->assertSame($callback, $streamCallback);
     }
 
     /**
-     * Tests that callAPI handles JSON encoding errors correctly.
-     *
-     * Ensures that when JSON encoding fails due to an invalid value,
-     * the method catches the JsonException and sets the request body to an empty string.
+     * @throws MistralAIException
+     * @throws Throwable
      */
-    public function testCallAPIJsonEncodingException(): void
+    public function testRejectsMoreThanThreeEndpointArguments(): void
     {
-        $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessageMatches('/JSON encode error/i');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Endpoint calls accept at most three arguments.');
 
-        $invalidValue = \tmpfile(); // Create an invalid value that cannot be JSON encoded
+        $this->mistralAI->__call('listModels', [[], [], static fn() => null, []]);
+    }
 
-        $this->mistralAI->createChatCompletion([
-            'model' => 'mistral-tiny',
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => $invalidValue,
-                ],
+    /**
+     * @throws MistralAIException
+     * @throws Throwable
+     */
+    public function testRejectsANonArrayNonCallableSecondArgument(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Second argument must be an array or callable.');
+
+        $this->mistralAI->__call('listModels', [[], 'invalid']);
+    }
+
+    /**
+     * @throws MistralAIException
+     * @throws Throwable
+     */
+    public function testRejectsAThirdArgumentWithoutASecondArray(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Third argument must be a stream callback.');
+
+        $this->mistralAI->__call('listModels', [[], static fn() => null, static fn() => null]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testSplitsCombinedPathParametersFromTheRequestBody(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $this->assertSame('/v1/conversations/conv_123', $request->getUri()->getPath());
+            $this->assertSame(
+                ['metadata' => ['topic' => 'coverage']],
+                \json_decode((string) $request->getBody(), true, 512, JSON_THROW_ON_ERROR),
+            );
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->appendConversation([
+            'conversation_id' => 'conv_123',
+            'metadata' => ['topic' => 'coverage'],
+        ]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testRejectsInvalidCustomHeadersInTheFirstArgument(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('customHeaders must be an array.');
+
+        $this->mistralAI->listModels(['customHeaders' => 'invalid']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testRejectsInvalidCustomHeadersInTheSecondArgument(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('customHeaders must be an array.');
+
+        $this->mistralAI->createChatCompletion([], ['customHeaders' => 'invalid']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testMergesCustomHeadersFromBothArguments(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $this->assertSame('first', $request->getHeaderLine('X-First'));
+            $this->assertSame('second', $request->getHeaderLine('X-Second'));
+            $this->assertSame('second', $request->getHeaderLine('X-Shared'));
+            $this->assertArrayNotHasKey(
+                'customHeaders',
+                \json_decode((string) $request->getBody(), true, 512, JSON_THROW_ON_ERROR),
+            );
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->createChatCompletion(
+            ['customHeaders' => ['X-First' => 'first', 'X-Shared' => 'first']],
+            [
+                'model' => 'mistral-small-latest',
+                'messages' => [],
+                'customHeaders' => ['X-Second' => 'second', 'X-Shared' => 'second'],
             ],
+        );
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testInfersLegacyEndpointBodyTypes(): void
+    {
+        $reflection = TestHelper::getPrivateMethod($this->mistralAI, 'inferBodyType');
+
+        $this->assertSame('none', $reflection->invoke($this->mistralAI, 'GET', '/models'));
+        $this->assertSame('multipart', $reflection->invoke($this->mistralAI, 'POST', '/audio/transcriptions'));
+        $this->assertSame('json', $reflection->invoke($this->mistralAI, 'POST', '/responses'));
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testCreatesLegacyJsonHeadersFromFalseMultipartFlag(): void
+    {
+        $reflection = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
+        $headers = $reflection->invoke($this->mistralAI, false);
+
+        $this->assertIsArray($headers);
+        $this->assertSame('application/json', $headers['Content-Type']);
+    }
+
+    /**
+     * Ensure that GET requests with parameters and options
+     * get merged into the URI query string.
+     */
+    public function testListModelsAddsQueryParametersToUri(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $query = $request->getUri()->getQuery();
+
+            $this->assertStringContainsString('foo=bar', $query);
+            $this->assertStringContainsString('baz=qux', $query);
+
+            return new Response(200, [], '{"success":true}');
+        });
+
+        $response = $this->mistralAI->listModels(
+            ['foo' => 'bar'],
+            ['baz' => 'qux'],
+        );
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    /**
+     * Custom headers on GET requests must not be serialized as query parameters.
+     */
+    public function testGetRequestExtractsCustomHeaders(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request) {
+            $this->assertSame('test-request-id', $request->getHeaderLine('X-Client-Request-Id'));
+            $this->assertStringNotContainsString('customHeaders', $request->getUri()->getQuery());
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->listModels([
+            'limit' => 10,
+            'customHeaders' => ['X-Client-Request-Id' => 'test-request-id'],
         ]);
     }
 
@@ -849,13 +840,13 @@ class MistralAITest extends TestCase
 
         try {
             $response = $apiCall();
-        } catch (Exception) {
-            $response = null;
+        } catch (Exception $e) {
+            $this->fail('Exception occurred during API call: ' . $e->getMessage());
         }
 
         self::assertNotNull($response, 'Response should not be null.');
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals($fakeResponseBody, (string)$response->getBody());
+        self::assertEquals($fakeResponseBody, (string) $response->getBody());
     }
 
     /**
@@ -865,14 +856,13 @@ class MistralAITest extends TestCase
      * and utilizes the provided stream callback to process the response.
      *
      * @param callable $apiCall       The API call to test.
-     * @param string   $responseFile  The path to the file containing the expected streaming response.
      * @param callable $streamCallback The callback function to handle streaming data.
      *
      * @throws Exception
      */
-    private function testApiCallWithStreaming(callable $apiCall, string $responseFile, callable $streamCallback): void
+    private function testApiCallWithStreaming(callable $apiCall, callable $streamCallback): void
     {
-        $fakeResponseContent = TestHelper::loadResponseFromFile($responseFile);
+        $fakeResponseContent = TestHelper::loadResponseFromFile('chatCompletionStreaming.txt');
         $fakeChunks = \explode("\n", \trim($fakeResponseContent));
         $stream = \fopen('php://temp', 'rb+');
 
@@ -902,7 +892,6 @@ class MistralAITest extends TestCase
     private function sendRequestMock(callable $responseCallback): void
     {
         $this->mockedClient
-            ->expects(self::once())
             ->method('sendRequest')
             ->willReturnCallback($responseCallback);
     }

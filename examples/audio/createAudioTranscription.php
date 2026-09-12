@@ -16,28 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Submit an audio transcription request.
- *
- * If the bundled fixture is available, it is uploaded directly; otherwise, the
- * example falls back to using a remote URL.
- *
- * OpenAPI Reference:
- * - Operation ID: audio_api_v1_transcriptions_post
- */
-$audioFixture = __DIR__ . '/fixtures/audio.mp3';
-
-$payload = [
-    'model' => 'voxtral-mini-latest',
-    'language' => 'en',
-];
-
-if (\file_exists($audioFixture)) {
-    $payload['file'] = $audioFixture;
-} else {
-    $payload['file_url'] = 'https://github.com/SoftCreatR/php-mistral-ai-sdk/raw/refs/heads/main/examples/audio/fixtures/audio.mp3';
-}
-
-MistralAIFactory::request('createAudioTranscription', $payload);
+// POST /v1/audio/transcriptions
+MistralAIFactory::request(
+    'createAudioTranscription',
+    [],
+    [
+        'model' => 'voxtral-mini-latest',
+        'file' => MistralAIFactory::fixture('audio.mp3'),
+    ],
+);

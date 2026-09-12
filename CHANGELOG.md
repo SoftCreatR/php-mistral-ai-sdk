@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-09-12
+
+### Added
+
+- Added the current public Mistral AI API surface, including v2 Prompts and Skills; voice and speech; observability; connectors; workflows; RAG; identity; and beta administration APIs.
+- Added a runnable, resource-grouped PHP example for every registered SDK method, plus dedicated streaming examples and shared file, audio, and PDF fixtures.
+- Added the public `MistralAI::request()` method for integrations that select endpoint names dynamically.
+- Added endpoint metadata for request body types, file fields, API base paths, streaming routes, and administrative operations.
+- Added structured `MistralAIException` response metadata, including the parsed API error, raw body, response headers, status code, and request ID.
+- Added `StreamingClientInterface` for transports that can expose an SSE response before it has been fully buffered.
+
+### Changed
+
+- Kept the minimum requirement at PHP 8.1. CI now tests PHP 8.1, 8.2, 8.3, 8.4, and 8.5.
+- Reworked the client around a compact PSR-17/PSR-18 transport architecture with consistent calling conventions.
+- Body-only calls now use a single body array. Calls containing path parameters may use either one combined array or the legacy path/body two-array form.
+- GET and DELETE parameters are encoded as RFC 3986 query parameters, and path segments are URL encoded.
+- Multipart uploads are copied as raw bytes into a temporary stream instead of being assembled in a single in-memory string.
+- SSE callbacks now receive decoded event arrays and handle split chunks, multiline data, mixed line endings, comments, and `[DONE]` frames.
+- Streaming calls return their PSR-7 response after invoking the callback instead of returning `null`.
+- Updated Composer constraints, workflows, README, endpoint catalog, and `.env.example` to match the current SDK surface.
+- Composer distribution archives now export only `src/` and `composer.json`.
+
+### Removed
+
+- Removed endpoints that are no longer present in the current public API reference, including the former fine-tuning job helpers.
+- Removed the unreleased DTO and endpoint-trait experiment from the 4.0 development branch; the stable array-based API remains the supported compatibility surface.
+
 ## [3.0.1] - 2025-11-20
 
 ### Fixed

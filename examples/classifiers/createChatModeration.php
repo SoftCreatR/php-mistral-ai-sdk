@@ -16,17 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Run chat moderation on structured messages.
- *
- * OpenAPI Reference:
- * - Operation ID: chat_moderations_v1_chat_moderations_post
- */
-MistralAIFactory::request('createChatModeration', [
-    'model' => 'mistral-moderation-latest',
-    'messages' => [
-        ['role' => 'user', 'content' => 'Is this allowed?'],
+// POST /v1/chat/moderations
+MistralAIFactory::request(
+    'createChatModeration',
+    [],
+    [
+        'model' => 'mistral-moderation-latest',
+        'input' => [
+            [
+                'role' => 'user',
+                'content' => 'This is a test message.',
+            ],
+        ],
     ],
-]);
+);

@@ -16,25 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Create an agents completion using a specific agent ID.
- *
- * Model Description:
- * The ID of the agent to use for this completion.
- *
- * In this example, we use 'agent-1234' as the agent ID.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: create_agents_completion_v1_agents_completions_post
- */
-MistralAIFactory::request('createAgentsCompletion', [
-    'agent_id' => 'agent-1234', // Replace with your actual agent ID
-    'messages' => [
-        [
-            'role' => 'user',
-            'content' => 'Tell me a joke about cats.',
+// POST /v1/agents/completions
+MistralAIFactory::request(
+    'createAgentsCompletion',
+    [],
+    [
+        'agent_id' => MistralAIFactory::env('MISTRAL_AGENT_ID'),
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => 'Hello!',
+            ],
         ],
     ],
-]);
+);

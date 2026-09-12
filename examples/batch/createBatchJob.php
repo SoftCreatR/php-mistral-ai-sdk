@@ -16,16 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Create a new batch job that replays chat completions.
- *
- * OpenAPI Reference:
- * - Operation ID: jobs_api_routes_batch_create_batch_job
- */
-MistralAIFactory::request('createBatchJob', [
-    'input_file_id' => 'file_abc123',
-    'endpoint' => '/v1/chat/completions',
-    'completion_window' => '24h',
-]);
+// POST /v1/batch/jobs
+MistralAIFactory::request(
+    'createBatchJob',
+    [],
+    [
+        'endpoint' => '/v1/chat/completions',
+    ],
+);

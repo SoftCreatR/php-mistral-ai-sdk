@@ -16,14 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Retrieve a library by ID (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_get_v1
- */
-MistralAIFactory::request('retrieveLibrary', [
-    'library_id' => 'lib_123',
-]);
+// GET /v1/libraries/{library_id}
+MistralAIFactory::request(
+    'retrieveLibrary',
+    [
+        'library_id' => MistralAIFactory::env('MISTRAL_LIBRARY_ID'),
+    ],
+);

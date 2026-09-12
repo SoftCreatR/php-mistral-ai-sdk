@@ -16,14 +16,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Restart a conversation to regenerate responses (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: agents_api_v1_conversations_restart
- */
-MistralAIFactory::request('restartConversation', [
-    'conversation_id' => 'conv_123',
-]);
+// POST /v1/conversations/{conversation_id}/restart
+MistralAIFactory::request(
+    'restartConversation',
+    [
+        'conversation_id' => MistralAIFactory::env('MISTRAL_CONVERSATION_ID'),
+    ],
+    [
+        'from_entry_id' => MistralAIFactory::env('MISTRAL_FROM_ENTRY_ID'),
+    ],
+);

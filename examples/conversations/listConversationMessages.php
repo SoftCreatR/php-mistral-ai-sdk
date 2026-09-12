@@ -16,15 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Retrieve paginated messages for a conversation (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: agents_api_v1_conversations_messages
- */
-MistralAIFactory::request('listConversationMessages', [
-    'conversation_id' => 'conv_123',
-    'limit' => 20,
-]);
+// GET /v1/conversations/{conversation_id}/messages
+MistralAIFactory::request(
+    'listConversationMessages',
+    [
+        'conversation_id' => MistralAIFactory::env('MISTRAL_CONVERSATION_ID'),
+    ],
+);

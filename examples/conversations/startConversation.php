@@ -16,17 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Start a new conversation with an agent (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: agents_api_v1_conversations_start
- */
-MistralAIFactory::request('startConversation', [
-    'agent_id' => 'agent_123',
-    'messages' => [
-        ['role' => 'user', 'content' => 'Help me summarize this ticket.'],
+// POST /v1/conversations
+MistralAIFactory::request(
+    'startConversation',
+    [],
+    [
+        'inputs' => 'Example input',
     ],
-]);
+);

@@ -16,14 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Delete a library (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_delete_v1
- */
-MistralAIFactory::request('deleteLibrary', [
-    'library_id' => 'lib_123',
-]);
+// DELETE /v1/libraries/{library_id}
+MistralAIFactory::request(
+    'deleteLibrary',
+    [
+        'library_id' => MistralAIFactory::env('MISTRAL_LIBRARY_ID'),
+    ],
+);

@@ -16,14 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Retrieve a batch job by ID.
- *
- * OpenAPI Reference:
- * - Operation ID: jobs_api_routes_batch_get_batch_job
- */
-MistralAIFactory::request('retrieveBatchJob', [
-    'job_id' => 'batch_job_12345',
-]);
+// GET /v1/batch/jobs/{job_id}
+MistralAIFactory::request(
+    'retrieveBatchJob',
+    [
+        'job_id' => MistralAIFactory::env('MISTRAL_JOB_ID'),
+    ],
+);

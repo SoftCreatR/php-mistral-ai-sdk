@@ -16,15 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../../MistralAIFactory.php';
+require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-/**
- * Example: Generate a signed URL for downloading a document (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_documents_get_signed_url_v1
- */
-MistralAIFactory::request('retrieveLibraryDocumentSignedUrl', [
-    'library_id' => 'lib_123',
-    'document_id' => 'doc_456',
-]);
+// GET /v1/libraries/{library_id}/documents/{document_id}/signed-url
+MistralAIFactory::request(
+    'retrieveLibraryDocumentSignedUrl',
+    [
+        'library_id' => MistralAIFactory::env('MISTRAL_LIBRARY_ID'),
+        'document_id' => MistralAIFactory::env('MISTRAL_DOCUMENT_ID'),
+    ],
+);

@@ -16,15 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Run a text moderation request.
- *
- * OpenAPI Reference:
- * - Operation ID: moderations_v1_moderations_post
- */
-MistralAIFactory::request('createModeration', [
-    'model' => 'mistral-moderation-latest',
-    'input' => 'Please flag anything that breaks workplace policy.',
-]);
+// POST /v1/moderations
+MistralAIFactory::request(
+    'createModeration',
+    [],
+    [
+        'model' => 'mistral-moderation-latest',
+        'input' => 'This is a test message.',
+    ],
+);

@@ -16,16 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Run a classifier to assign labels to text.
- *
- * OpenAPI Reference:
- * - Operation ID: classifications_v1_classifications_post
- */
-MistralAIFactory::request('createClassification', [
-    'model' => 'mistral-classifier-latest',
-    'input' => 'Tier 1 support: password reset issue.',
-    'labels' => ['billing', 'support', 'sales'],
-]);
+// POST /v1/classifications
+MistralAIFactory::request(
+    'createClassification',
+    [],
+    [
+        'model' => 'mistral-moderation-latest',
+        'input' => 'This is a test message.',
+    ],
+);

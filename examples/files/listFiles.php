@@ -16,14 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: List all uploaded files.
- *
- * This endpoint retrieves a list of files that have been uploaded to your account.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: list_files_v1_files_get
- */
-MistralAIFactory::request('listFiles');
+// GET /v1/files
+MistralAIFactory::request(
+    'listFiles',
+);

@@ -25,28 +25,78 @@ use Throwable;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * Exception class for handling errors in the MistralAI API client.
+ * Exception class for handling errors in the Mistral AI API client.
  *
- * This exception is thrown when the MistralAI API client encounters an error.
+ * This exception is thrown when the Mistral AI API client encounters an error.
  * It attempts to extract a meaningful error message from the API response,
  * which may be in JSON format containing an "error" object.
  */
 class MistralAIException extends Exception
 {
+    /** @var array<string, mixed>|null */
+    private ?array $error = null;
+
+    /** @var array<string, string[]> */
+    private array $responseHeaders;
+
+    private ?string $responseBody;
+
+    private ?string $requestId;
+
     /**
      * Constructs a new MistralAIException instance.
      *
-     * @param string         $message  The exception message. If it's a valid JSON string containing an "error.message",
+     * @param string|null    $message  The exception message. If it's a valid JSON string containing an "error.message",
      *                                 that message will be used instead.
      * @param int            $code     The exception code.
      * @param Throwable|null $previous The previous exception used for exception chaining.
+     * @param string|null $requestId The Mistral AI request identifier, when available.
+     * @param array<string, string[]> $responseHeaders Response headers, when available.
      */
     public function __construct(
-        string $message = 'An unknown error occurred',
+        ?string $message,
         int $code = 0,
-        ?Throwable $previous = null
+        ?Throwable $previous = null,
+        ?string $requestId = null,
+        array $responseHeaders = [],
     ) {
-        parent::__construct($this->extractErrorMessageFromJson($message), $code, $previous);
+        $this->responseBody = $message;
+        $this->requestId = $requestId !== '' ? $requestId : null;
+        $this->responseHeaders = $responseHeaders;
+
+        if (empty($message)) {
+            $message = 'An unknown error occurred';
+        } else {
+            $message = $this->extractErrorMessageFromJson($message);
+        }
+
+        parent::__construct($message, $code, $previous);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getError(): ?array
+    {
+        return $this->error;
+    }
+
+    public function getRequestId(): ?string
+    {
+        return $this->requestId;
+    }
+
+    public function getResponseBody(): ?string
+    {
+        return $this->responseBody;
+    }
+
+    /**
+     * @return array<string, string[]>
+     */
+    public function getResponseHeaders(): array
+    {
+        return $this->responseHeaders;
     }
 
     /**
@@ -64,8 +114,12 @@ class MistralAIException extends Exception
         try {
             $decoded = \json_decode($errorMessage, true, 512, JSON_THROW_ON_ERROR);
 
-            if (isset($decoded['error']['message']) && \is_string($decoded['error']['message'])) {
-                return $decoded['error']['message'];
+            if (isset($decoded['error']) && \is_array($decoded['error'])) {
+                $this->error = $decoded['error'];
+
+                if (isset($decoded['error']['message']) && \is_string($decoded['error']['message'])) {
+                    return $decoded['error']['message'];
+                }
             }
         } catch (JsonException) {
             // Ignore JSON decoding errors and return the original message

@@ -16,34 +16,18 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Stream an audio transcription request.
- *
- * If the bundled fixture is present, it is streamed directly; otherwise, the
- * request uses a remote URL as the source.
- *
- * OpenAPI Reference:
- * - Operation ID: audio_api_v1_transcriptions_post_stream
- */
-$streamCallback = static function (array $chunk): void {
-    if (isset($chunk['text'])) {
-        echo $chunk['text'];
-    }
-};
-
-$audioFixture = __DIR__ . '/fixtures/audio.mp3';
-
-$payload = [
-    'model' => 'voxtral-mini-latest',
-    'stream' => true,
-];
-
-if (\file_exists($audioFixture)) {
-    $payload['file'] = $audioFixture;
-} else {
-    $payload['file_url'] = 'https://github.com/SoftCreatR/php-mistral-ai-sdk/raw/refs/heads/main/examples/audio/fixtures/audio.mp3';
-}
-
-MistralAIFactory::request('createAudioTranscriptionStream', $payload, $streamCallback);
+// POST /v1/audio/transcriptions
+MistralAIFactory::request(
+    'createAudioTranscriptionStream',
+    [],
+    [
+        'model' => 'voxtral-mini-latest',
+        'file' => MistralAIFactory::fixture('audio.mp3'),
+        'stream' => true,
+    ],
+    static function (array $event): void {
+        echo \json_encode($event, JSON_THROW_ON_ERROR) . "\n";
+    },
+);

@@ -16,17 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../../MistralAIFactory.php';
+require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-/**
- * Example: Update document metadata (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_documents_update_v1
- */
-MistralAIFactory::request('updateLibraryDocument', [
-    'library_id' => 'lib_123',
-    'document_id' => 'doc_456',
-], [
-    'metadata' => ['tags' => ['priority', 'handoff']],
-]);
+// PUT /v1/libraries/{library_id}/documents/{document_id}
+MistralAIFactory::request(
+    'updateLibraryDocument',
+    [
+        'library_id' => MistralAIFactory::env('MISTRAL_LIBRARY_ID'),
+        'document_id' => MistralAIFactory::env('MISTRAL_DOCUMENT_ID'),
+    ],
+);

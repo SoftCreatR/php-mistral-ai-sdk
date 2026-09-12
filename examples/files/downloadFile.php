@@ -16,14 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Download the raw contents of a file.
- *
- * OpenAPI Reference:
- * - Operation ID: files_api_routes_download_file
- */
-MistralAIFactory::request('downloadFile', [
-    'file_id' => 'file_abc123',
-]);
+// GET /v1/files/{file_id}/content
+MistralAIFactory::request(
+    'downloadFile',
+    [
+        'file_id' => MistralAIFactory::env('MISTRAL_FILE_ID'),
+    ],
+);

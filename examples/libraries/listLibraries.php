@@ -16,12 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: List knowledge libraries (beta).
- *
- * OpenAPI Reference:
- * - Operation ID: libraries_list_v1
- */
-MistralAIFactory::request('listLibraries');
+// GET /v1/libraries
+MistralAIFactory::request(
+    'listLibraries',
+);

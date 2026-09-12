@@ -16,17 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Retrieve a specific file by its ID.
- *
- * Model Description:
- * ID of the file to retrieve.
- *
- * In this example, we retrieve a file with ID 'file-abc123'.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: retrieve_file_v1_files__file_id__get
- */
-MistralAIFactory::request('retrieveFile', ['file_id' => 'file-abc123']);
+// GET /v1/files/{file_id}
+MistralAIFactory::request(
+    'retrieveFile',
+    [
+        'file_id' => MistralAIFactory::env('MISTRAL_FILE_ID'),
+    ],
+);

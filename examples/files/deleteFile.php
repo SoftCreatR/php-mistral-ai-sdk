@@ -16,17 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Delete a file.
- *
- * Model Description:
- * ID of the file to delete.
- *
- * In this example, we delete a file with ID 'file-abc123'.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: delete_file_v1_files__file_id__delete
- */
-MistralAIFactory::request('deleteFile', ['file_id' => 'file-abc123']);
+// DELETE /v1/files/{file_id}
+MistralAIFactory::request(
+    'deleteFile',
+    [
+        'file_id' => MistralAIFactory::env('MISTRAL_FILE_ID'),
+    ],
+);

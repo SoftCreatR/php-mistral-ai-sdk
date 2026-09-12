@@ -16,17 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Unarchive a fine-tuned model.
- *
- * Model Description:
- * Unarchive a fine-tuned model to make it visible in the list of models.
- *
- * In this example, we unarchive a fine-tuned model with the given ID.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: unarchive_model_v1_fine_tuning_models__model_id__archive_delete
- */
-MistralAIFactory::request('unarchiveModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123']);
+// DELETE /v1/fine_tuning/models/{model_id}/archive
+MistralAIFactory::request(
+    'unarchiveModel',
+    [
+        'model_id' => MistralAIFactory::env('MISTRAL_MODEL_ID'),
+    ],
+);

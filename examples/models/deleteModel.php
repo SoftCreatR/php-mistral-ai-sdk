@@ -16,17 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once __DIR__ . '/../MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-/**
- * Example: Delete a fine-tuned model.
- *
- * Model Description:
- * ID of the model to delete. Only fine-tuned models can be deleted.
- *
- * In this example, we delete a fine-tuned model with ID 'ft:open-mistral-7b:my-great-model:abc123'.
- *
- * OpenAPI Specification Reference:
- * - Operation ID: delete_model_v1_models__model_id__delete
- */
-MistralAIFactory::request('deleteModel', ['model_id' => 'ft:open-mistral-7b:my-great-model:abc123']);
+// DELETE /v1/models/{model_id}
+MistralAIFactory::request(
+    'deleteModel',
+    [
+        'model_id' => MistralAIFactory::env('MISTRAL_MODEL_ID'),
+    ],
+);
