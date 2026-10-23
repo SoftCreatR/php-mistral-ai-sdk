@@ -1,0 +1,21 @@
+{
+    "id": "cmpl_example",
+    "object": "chat.completion",
+    "model": "mistral-small-latest",
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "{\"summary\":\"The customer reports a damaged item.\",\"sentiment\":\"negative\"}"
+            },
+            "finish_reason": "stop"
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 16,
+        "total_tokens": 36
+    },
+    "future_field": true
+}

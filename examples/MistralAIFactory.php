@@ -42,20 +42,14 @@ final class MistralAIFactory
         string $apiKey = '',
     ): MistralAI {
         $psr17Factory = new HttpFactory();
-        $apiVersion = $_ENV['MISTRAL_API_VERSION'] ?? '';
-
-        if ($apiVersion === MistralAIURLBuilder::API_VERSION) {
-            $apiVersion = '';
-        }
-
         return new MistralAI(
             requestFactory: $psr17Factory,
             streamFactory: $psr17Factory,
             uriFactory: $psr17Factory,
             httpClient: new Client(['stream' => true]),
             apiKey: $apiKey,
-            origin: $_ENV['MISTRAL_API_ORIGIN'] ?? '',
-            apiVersion: $apiVersion,
+            origin: self::value('MISTRAL_API_ORIGIN'),
+            basePath: self::value('MISTRAL_API_BASE_PATH'),
         );
     }
 
@@ -76,7 +70,7 @@ final class MistralAIFactory
         try {
             $endpoint = MistralAIURLBuilder::getEndpoint($method);
             $keyName = ($endpoint['admin'] ?? false) ? 'MISTRAL_ADMIN_API_KEY' : 'MISTRAL_API_KEY';
-            $apiKey = $_ENV[$keyName] ?? '';
+            $apiKey = self::value($keyName);
 
             if ($apiKey === '') {
                 throw new \RuntimeException("Set {$keyName} in the project .env file before running this example.");
@@ -127,15 +121,22 @@ final class MistralAIFactory
     /**
      * @throws \RuntimeException If an example variable is not configured.
      */
-    public static function env(string $name): string
+    public static function env(string $name, string $default = ''): string
     {
-        $value = $_ENV[$name] ?? '';
+        $value = self::value($name, $default);
 
         if ($value === '') {
             throw new \RuntimeException("Set {$name} in the project .env file before running this example.");
         }
 
         return $value;
+    }
+
+    private static function value(string $name, string $default = ''): string
+    {
+        $value = $_ENV[$name] ?? \getenv($name);
+
+        return \is_string($value) && $value !== '' ? $value : $default;
     }
 
     /**
@@ -155,7 +156,7 @@ final class MistralAIFactory
     /**
      * @throws \RuntimeException If the fixture cannot be read.
      */
-    public static function base64Fixture(string $name): string
+    public static function textFixture(string $name): string
     {
         $contents = \file_get_contents(self::fixture($name));
 
@@ -163,6 +164,14 @@ final class MistralAIFactory
             throw new \RuntimeException("Unable to read example fixture: {$name}");
         }
 
-        return \base64_encode($contents);
+        return $contents;
+    }
+
+    /**
+     * @throws \RuntimeException If the fixture cannot be read.
+     */
+    public static function base64Fixture(string $name): string
+    {
+        return \base64_encode(self::textFixture($name));
     }
 }

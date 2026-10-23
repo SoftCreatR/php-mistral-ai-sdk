@@ -23,7 +23,7 @@ MistralAIFactory::request(
     'createAudioTranscriptionStream',
     [],
     [
-        'model' => 'voxtral-mini-latest',
+        'model' => 'voxtral-mini-transcribe-latest',
         'file' => MistralAIFactory::fixture('audio.mp3'),
         'stream' => true,
     ],

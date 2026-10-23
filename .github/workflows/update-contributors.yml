@@ -5,11 +5,11 @@ on:
     types: [closed]
     branches:
       - main
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
   workflow_dispatch:
 
 jobs:
   update-contributors:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write

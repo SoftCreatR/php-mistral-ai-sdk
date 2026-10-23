@@ -1,0 +1,133 @@
+name: Validate
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }} (${{ matrix.dependencies }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2.35'
+            dependencies: lowest
+            composer-options: --prefer-lowest --prefer-stable
+            experimental: false
+          - php: '8.5'
+            dependencies: latest
+            composer-options: ''
+            experimental: false
+          - php: '8.6'
+            dependencies: latest
+            composer-options: ''
+            experimental: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          extensions: json
+          tools: composer:v2
+
+      - name: Install dependencies
+        env:
+          COMPOSER_OPTIONS: ${{ matrix.composer-options }}
+        run: composer update --prefer-dist --no-interaction --no-progress $COMPOSER_OPTIONS
+
+      - name: Check PHP syntax
+        run: find src tests examples -type f -name '*.php' -print0 | xargs -0 -n 1 php -l
+
+      - name: Run tests
+        run: composer test
+
+  quality:
+    name: Quality and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.5'
+          coverage: pcov
+          extensions: json, simplexml
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Install optional contract integration for validation
+        run: composer require --dev softcreatr/json-payload-contract:^1.0 --no-interaction --no-progress
+
+      - name: Audit dependencies
+        run: composer audit --locked
+
+      - name: Check coding style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no
+
+      - name: Run static analysis
+        run: composer analyse
+
+      - name: Check optional contract integration
+        run: php examples/response-handling/withJsonPayloadContract.php
+
+      - name: Run test coverage
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+      - name: Require 100% test coverage
+        run: |
+          php -r '
+          $xml = simplexml_load_file("coverage.xml");
+          if ($xml === false) {
+              fwrite(STDERR, "Unable to read coverage.xml.\n");
+              exit(1);
+          }
+
+          $metrics = $xml->project->metrics;
+          if ($metrics === null) {
+              fwrite(STDERR, "Coverage metrics are missing.\n");
+              exit(1);
+          }
+
+          foreach (["statements", "methods", "elements"] as $metric) {
+              $total = (int) $metrics[$metric];
+              $covered = (int) $metrics["covered" . $metric];
+
+              if ($total === 0 || $covered !== $total) {
+                  fwrite(STDERR, sprintf(
+                      "%s coverage is %d/%d; 100%% is required.\n",
+                      ucfirst($metric),
+                      $covered,
+                      $total
+                  ));
+                  exit(1);
+              }
+          }
+
+          fwrite(STDOUT, "Coverage is 100%.\n");
+          '

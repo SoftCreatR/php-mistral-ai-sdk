@@ -1,15 +1,18 @@
 # Mistral AI API SDK for PHP
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/SoftCreatR/php-mistral-ai-sdk/.github/workflows/validate-pr.yml?branch=main&label=tests)](https://github.com/SoftCreatR/php-mistral-ai-sdk/actions/workflows/validate-pr.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/SoftCreatR/php-mistral-ai-sdk/.github/workflows/create-release.yml?branch=main&label=release)](https://github.com/SoftCreatR/php-mistral-ai-sdk/actions/workflows/create-release.yml)
 [![Latest Release](https://img.shields.io/packagist/v/softcreatr/php-mistral-ai-sdk)](https://packagist.org/packages/softcreatr/php-mistral-ai-sdk)
 [![PHP](https://img.shields.io/packagist/dependency-v/softcreatr/php-mistral-ai-sdk/php)](composer.json)
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE.md)
 
-A lightweight, underrated PSR-17/PSR-18 client for the current [Mistral AI API](https://docs.mistral.ai/api), with examples for every exposed SDK method, SSE streaming, streamed multipart uploads, and structured errors.
+A lightweight PSR-17/PSR-18 client for the current [Mistral AI API](https://docs.mistral.ai/api), with examples for
+every exposed SDK method, SSE streaming, streamed multipart uploads, structured errors, and optional response wrappers.
 
 ## Requirements
 
-- PHP 8.1 or newer. CI tests PHP 8.1, 8.2, 8.3, 8.4, and 8.5.
+- PHP 8.2.35+, 8.3.36+, 8.4.27+, 8.5.12+, or 8.6.x. Earlier patch releases in each branch are not supported.
+  CI tests PHP 8.2.35 with lowest dependencies and the latest PHP 8.5 release with current dependencies.
+  PHP 8.6 is an experimental, non-blocking job.
 - A PSR-17 request, stream, and URI factory.
 - A PSR-18 HTTP client.
 - The JSON extension.
@@ -76,7 +79,8 @@ $mistral->createEmbedding([
 ]);
 ```
 
-For endpoints with path parameters, a single combined array is the preferred v4 form. Path fields are separated from the request body using the endpoint template:
+For endpoints with path parameters, a single combined array is the preferred form. Path fields are separated from
+the request body using the endpoint template:
 
 ```php
 $mistral->updateAgent([
@@ -85,7 +89,7 @@ $mistral->updateAgent([
 ]);
 ```
 
-The v3 two-array form remains supported for existing integrations:
+Use separate parameter and body arrays when an endpoint needs both query parameters and a request body:
 
 ```php
 $mistral->updateAgent(
@@ -94,7 +98,9 @@ $mistral->updateAgent(
 );
 ```
 
-For `GET` and `DELETE` methods, non-path values become RFC 3986 query parameters. Path parameter values are URL encoded. The explicit form is available when method names are determined at runtime:
+For bodyless endpoints, non-path values become RFC 3986 query parameters. Endpoints that declare a JSON body,
+including managed-index document deletion, keep that body separate from path and query parameters. Path parameter
+values are URL encoded. The explicit form is available when method names are determined at runtime:
 
 ```php
 $response = $mistral->request(
@@ -157,6 +163,49 @@ try {
 
 PSR-18 transport failures are wrapped in `MistralAIException` and retain the original exception as `getPrevious()`.
 
+## Response Handling
+
+Response helpers are optional. Endpoint methods still return raw PSR-7 responses; no DTO conversion or payload
+validation is applied unless your application requests it.
+
+```php
+use SoftCreatR\MistralAI\Response\JsonResponse;
+use SoftCreatR\MistralAI\Response\ChatCompletionResponse;
+
+$json = JsonResponse::fromResponse($response);
+$data = $json->toArray();
+$requestId = $json->getRequestId();
+
+$completion = ChatCompletionResponse::fromJsonResponse($json);
+echo $completion->getOutputText();
+```
+
+`JsonResponse` snapshots the original body and retains the HTTP response, headers, unknown fields, and raw JSON.
+Seekable streams are read without changing their position. Non-seekable streams are consumed, so wrap those
+responses before reading them elsewhere. `map()` receives the decoded array; `mapJson()` receives the unchanged
+JSON string and preserves JSON distinctions such as objects versus arrays.
+
+`ChatCompletionResponse` exposes `id`, `model`, `choices`, and `usage`. `getOutputText()` reads the first alternative,
+accepts string or text-chunk content, and ignores reasoning and unknown chunk types. Pass a choice index to read a
+different alternative. `getFinishReason()` exposes the provider's reason without hiding truncation or tool calls.
+The DTO checks the common envelope and recognized fields it reads; it is not a complete API-schema validator.
+Unknown fields and finish reasons remain available through `toArray()`.
+
+### Optional Validation
+
+[JSONPayloadContract](https://github.com/SoftCreatR/JSONPayloadContract) can validate application-specific JSON
+contracts and map results to your own DTOs. It is a suggested dependency, not a runtime requirement of the SDK.
+Install it explicitly on PHP 8.3 or newer:
+
+```bash
+composer require softcreatr/json-payload-contract:^1.0
+php examples/response-handling/withJsonPayloadContract.php
+```
+
+The offline example validates the completion's finish reason and the generated JSON before constructing a typed
+application DTO. Use Mistral's `response_format` for structured generation, and validate generated values before
+using them in your application. SSE callbacks remain plain event arrays; contracts can be applied selectively.
+
 ## Examples
 
 Examples load the ignored project-level `.env` through `examples/MistralAIFactory.php`:
@@ -166,13 +215,171 @@ cp .env.example .env
 php examples/chat/createChatCompletion.php
 ```
 
-Administration examples use `MISTRAL_ADMIN_API_KEY`. Resource-specific examples read IDs from the variables documented in `.env.example`.
+Administration examples use `MISTRAL_ADMIN_API_KEY`. Resource-specific examples read IDs from the variables
+documented in `.env.example`. Fixtures for files, audio, and OCR are under `examples/fixtures`; the optional mapper
+uses a local chat-completion fixture without making an API call. Review resource creation, uploads, cancellation,
+deletion, role assignment, and authentication examples before running them. Realtime session responses contain
+short-lived client secrets and must not be published or logged.
+
+Skills use JSON definitions with Markdown bodies loaded from `examples/fixtures/skills/basic-math/SKILL.md`.
+Audio examples use the current [Voxtral transcription models](https://docs.mistral.ai/studio/audio/migrate-from-voxtral-2);
+availability depends on your account's access to the selected model.
 
 ## Supported Methods
 
 The catalog follows the current [Mistral AI API reference](https://docs.mistral.ai/api). Beta endpoints remain grouped by their documented API area, and the v2 Prompts and Skills routes use their endpoint-specific base path automatically.
 
 <!-- ENDPOINT CATALOG START -->
+
+### Chat
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createChatCompletion` | `POST /v1/chat/completions` | `json` | [PHP](examples/chat/createChatCompletion.php) |
+
+### FIM
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createFimCompletion` | `POST /v1/fim/completions` | `json` | [PHP](examples/fim/createFimCompletion.php) |
+
+### Embeddings
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createEmbedding` | `POST /v1/embeddings` | `json` | [PHP](examples/embeddings/createEmbedding.php) |
+
+### Classifiers
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createModeration` | `POST /v1/moderations` | `json` | [PHP](examples/classifiers/createModeration.php) |
+| `createChatModeration` | `POST /v1/chat/moderations` | `json` | [PHP](examples/classifiers/createChatModeration.php) |
+| `createClassification` | `POST /v1/classifications` | `json` | [PHP](examples/classifiers/createClassification.php) |
+| `createChatClassification` | `POST /v1/chat/classifications` | `json` | [PHP](examples/classifiers/createChatClassification.php) |
+
+### OCR
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createOcr` | `POST /v1/ocr` | `json` | [PHP](examples/ocr/createOcr.php) |
+
+### Audio
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listVoices` | `GET /v2/audio/voices` | `none` | [PHP](examples/audio/listVoices.php) |
+| `createSpeech` | `POST /v1/audio/speech` | `json` | [PHP](examples/audio/createSpeech.php) |
+| `createAudioTranscription` | `POST /v1/audio/transcriptions` | `multipart` | [PHP](examples/audio/createAudioTranscription.php) |
+| `createAudioTranscriptionStream` | `POST /v1/audio/transcriptions` | `multipart` | [PHP](examples/audio/createAudioTranscriptionStream.php) |
+| `createVoice` | `POST /v1/audio/voices` | `json` | [PHP](examples/audio/createVoice.php) |
+| `deleteVoice` | `DELETE /v1/audio/voices/{voice_id}` | `none` | [PHP](examples/audio/deleteVoice.php) |
+| `updateVoice` | `PATCH /v1/audio/voices/{voice_id}` | `json` | [PHP](examples/audio/updateVoice.php) |
+| `getVoice` | `GET /v1/audio/voices/{voice_id}` | `none` | [PHP](examples/audio/getVoice.php) |
+| `getVoiceSampleAudio` | `GET /v1/audio/voices/{voice_id}/sample` | `none` | [PHP](examples/audio/getVoiceSampleAudio.php) |
+
+### Realtime
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createClientSession` | `POST /v1/client/sessions` | `json` | [PHP](examples/realtime/createClientSession.php) |
+
+### Models
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listModels` | `GET /v1/models` | `none` | [PHP](examples/models/listModels.php) |
+| `retrieveModel` | `GET /v1/models/{model_id}` | `none` | [PHP](examples/models/retrieveModel.php) |
+| `deleteModel` | `DELETE /v1/models/{model_id}` | `none` | [PHP](examples/models/deleteModel.php) |
+| `updateFineTunedModel` | `PATCH /v1/fine_tuning/models/{model_id}` | `json` | [PHP](examples/models/updateFineTunedModel.php) |
+| `archiveModel` | `POST /v1/fine_tuning/models/{model_id}/archive` | `none` | [PHP](examples/models/archiveModel.php) |
+| `unarchiveModel` | `DELETE /v1/fine_tuning/models/{model_id}/archive` | `none` | [PHP](examples/models/unarchiveModel.php) |
+
+### Agents
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createAgent` | `POST /v1/agents` | `json` | [PHP](examples/agents/createAgent.php) |
+| `listAgentPages` | `GET /v1/agents/pages` | `none` | [PHP](examples/agents/listAgentPages.php) |
+| `retrieveAgent` | `GET /v1/agents/{agent_id}` | `none` | [PHP](examples/agents/retrieveAgent.php) |
+| `updateAgent` | `PATCH /v1/agents/{agent_id}` | `json` | [PHP](examples/agents/updateAgent.php) |
+| `deleteAgent` | `DELETE /v1/agents/{agent_id}` | `none` | [PHP](examples/agents/deleteAgent.php) |
+| `updateAgentVersion` | `PATCH /v1/agents/{agent_id}/version` | `none` | [PHP](examples/agents/updateAgentVersion.php) |
+| `listAgentVersions` | `GET /v1/agents/{agent_id}/versions` | `none` | [PHP](examples/agents/listAgentVersions.php) |
+| `retrieveAgentVersion` | `GET /v1/agents/{agent_id}/versions/{version}` | `none` | [PHP](examples/agents/retrieveAgentVersion.php) |
+| `upsertAgentVersionAlias` | `PUT /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/upsertAgentVersionAlias.php) |
+| `listAgentVersionAliases` | `GET /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/listAgentVersionAliases.php) |
+| `deleteAgentVersionAlias` | `DELETE /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/deleteAgentVersionAlias.php) |
+
+### Conversations
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `startConversation` | `POST /v1/conversations` | `json` | [PHP](examples/conversations/startConversation.php) |
+| `listConversations` | `GET /v1/conversations` | `none` | [PHP](examples/conversations/listConversations.php) |
+| `retrieveConversation` | `GET /v1/conversations/{conversation_id}` | `none` | [PHP](examples/conversations/retrieveConversation.php) |
+| `deleteConversation` | `DELETE /v1/conversations/{conversation_id}` | `none` | [PHP](examples/conversations/deleteConversation.php) |
+| `appendConversation` | `POST /v1/conversations/{conversation_id}` | `json` | [PHP](examples/conversations/appendConversation.php) |
+| `listConversationHistory` | `GET /v1/conversations/{conversation_id}/history` | `none` | [PHP](examples/conversations/listConversationHistory.php) |
+| `listConversationMessages` | `GET /v1/conversations/{conversation_id}/messages` | `none` | [PHP](examples/conversations/listConversationMessages.php) |
+| `restartConversation` | `POST /v1/conversations/{conversation_id}/restart` | `json` | [PHP](examples/conversations/restartConversation.php) |
+| `startConversationStream` | `POST /v1/conversations` | `json` | [PHP](examples/conversations/startConversationStream.php) |
+| `appendConversationStream` | `POST /v1/conversations/{conversation_id}` | `json` | [PHP](examples/conversations/appendConversationStream.php) |
+| `restartConversationStream` | `POST /v1/conversations/{conversation_id}/restart` | `json` | [PHP](examples/conversations/restartConversationStream.php) |
+
+### Files
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `uploadFile` | `POST /v1/files` | `multipart` | [PHP](examples/files/uploadFile.php) |
+| `listFiles` | `GET /v1/files` | `none` | [PHP](examples/files/listFiles.php) |
+| `retrieveFile` | `GET /v1/files/{file_id}` | `none` | [PHP](examples/files/retrieveFile.php) |
+| `deleteFile` | `DELETE /v1/files/{file_id}` | `none` | [PHP](examples/files/deleteFile.php) |
+| `downloadFile` | `GET /v1/files/{file_id}/content` | `none` | [PHP](examples/files/downloadFile.php) |
+| `retrieveFileSignedUrl` | `GET /v1/files/{file_id}/url` | `none` | [PHP](examples/files/retrieveFileSignedUrl.php) |
+
+### Batch
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listBatchJobs` | `GET /v1/batch/jobs` | `none` | [PHP](examples/batch/listBatchJobs.php) |
+| `createBatchJob` | `POST /v1/batch/jobs` | `json` | [PHP](examples/batch/createBatchJob.php) |
+| `retrieveBatchJob` | `GET /v1/batch/jobs/{job_id}` | `none` | [PHP](examples/batch/retrieveBatchJob.php) |
+| `deleteBatchJob` | `DELETE /v1/batch/jobs/{job_id}` | `none` | [PHP](examples/batch/deleteBatchJob.php) |
+| `cancelBatchJob` | `POST /v1/batch/jobs/{job_id}/cancel` | `none` | [PHP](examples/batch/cancelBatchJob.php) |
+
+### Libraries
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listLibraries` | `GET /v1/libraries` | `none` | [PHP](examples/libraries/listLibraries.php) |
+| `createLibrary` | `POST /v1/libraries` | `json` | [PHP](examples/libraries/createLibrary.php) |
+| `retrieveLibrary` | `GET /v1/libraries/{library_id}` | `none` | [PHP](examples/libraries/retrieveLibrary.php) |
+| `deleteLibrary` | `DELETE /v1/libraries/{library_id}` | `none` | [PHP](examples/libraries/deleteLibrary.php) |
+| `patchLibrary` | `PATCH /v1/libraries/{library_id}` | `json` | [PHP](examples/libraries/patchLibrary.php) |
+
+### Libraries / Documents
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listLibraryDocuments` | `GET /v1/libraries/{library_id}/documents` | `none` | [PHP](examples/libraries/documents/listLibraryDocuments.php) |
+| `uploadLibraryDocument` | `POST /v1/libraries/{library_id}/documents` | `multipart` | [PHP](examples/libraries/documents/uploadLibraryDocument.php) |
+| `retrieveLibraryDocument` | `GET /v1/libraries/{library_id}/documents/{document_id}` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocument.php) |
+| `patchLibraryDocument` | `PATCH /v1/libraries/{library_id}/documents/{document_id}` | `json` | [PHP](examples/libraries/documents/patchLibraryDocument.php) |
+| `deleteLibraryDocument` | `DELETE /v1/libraries/{library_id}/documents/{document_id}` | `none` | [PHP](examples/libraries/documents/deleteLibraryDocument.php) |
+| `retrieveLibraryDocumentTextContent` | `GET /v1/libraries/{library_id}/documents/{document_id}/text_content` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentTextContent.php) |
+| `retrieveLibraryDocumentStatus` | `GET /v1/libraries/{library_id}/documents/{document_id}/status` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentStatus.php) |
+| `retrieveLibraryDocumentSignedUrl` | `GET /v1/libraries/{library_id}/documents/{document_id}/signed-url` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentSignedUrl.php) |
+| `retrieveLibraryDocumentExtractedTextSignedUrl` | `GET /v1/libraries/{library_id}/documents/{document_id}/extracted-text-signed-url` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentExtractedTextSignedUrl.php) |
+| `reprocessLibraryDocument` | `POST /v1/libraries/{library_id}/documents/{document_id}/reprocess` | `none` | [PHP](examples/libraries/documents/reprocessLibraryDocument.php) |
+
+### Libraries / Shares
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listLibraryShares` | `GET /v1/libraries/{library_id}/share` | `none` | [PHP](examples/libraries/shares/listLibraryShares.php) |
+| `upsertLibraryShare` | `PUT /v1/libraries/{library_id}/share` | `json` | [PHP](examples/libraries/shares/upsertLibraryShare.php) |
+| `deleteLibraryShare` | `DELETE /v1/libraries/{library_id}/share` | `json` | [PHP](examples/libraries/shares/deleteLibraryShare.php) |
 
 ### Prompts
 
@@ -202,171 +409,170 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `retrieveSkillVersion` | `GET /v2/skills/{skill_id}/versions/{version}` | `none` | [PHP](examples/skills/retrieveSkillVersion.php) |
 | `updateSkillVersionMetadata` | `PATCH /v2/skills/{skill_id}/versions/{version}` | `json` | [PHP](examples/skills/updateSkillVersionMetadata.php) |
 
-### Audio
+### Connectors
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `createSpeech` | `POST /v1/audio/speech` | `json` | [PHP](examples/audio/createSpeech.php) |
-| `createAudioTranscription` | `POST /v1/audio/transcriptions` | `multipart` | [PHP](examples/audio/createAudioTranscription.php) |
-| `createAudioTranscriptionStream` | `POST /v1/audio/transcriptions` | `multipart` | [PHP](examples/audio/createAudioTranscriptionStream.php) |
-| `listVoices` | `GET /v1/audio/voices` | `none` | [PHP](examples/audio/listVoices.php) |
-| `createVoice` | `POST /v1/audio/voices` | `json` | [PHP](examples/audio/createVoice.php) |
-| `deleteVoice` | `DELETE /v1/audio/voices/{voice_id}` | `none` | [PHP](examples/audio/deleteVoice.php) |
-| `updateVoice` | `PATCH /v1/audio/voices/{voice_id}` | `json` | [PHP](examples/audio/updateVoice.php) |
-| `getVoice` | `GET /v1/audio/voices/{voice_id}` | `none` | [PHP](examples/audio/getVoice.php) |
-| `getVoiceSampleAudio` | `GET /v1/audio/voices/{voice_id}/sample` | `none` | [PHP](examples/audio/getVoiceSampleAudio.php) |
+| `shareConnectorWithOrganization` | `PUT /v1/connectors/{connector_id}/organization/share` | `none` | [PHP](examples/connectors/shareConnectorWithOrganization.php) |
+| `unshareConnectorFromOrganization` | `DELETE /v1/connectors/{connector_id}/organization/share` | `none` | [PHP](examples/connectors/unshareConnectorFromOrganization.php) |
+| `createConnectorCredentials` | `POST /v1/connectors/{connector_id_or_name}/{consumer_scope}/credentials` | `json` | [PHP](examples/connectors/createConnectorCredentials.php) |
+| `updateConnectorCredentials` | `PATCH /v1/connectors/{connector_id_or_name}/{consumer_scope}/credentials` | `json` | [PHP](examples/connectors/updateConnectorCredentials.php) |
+| `deleteConnectorCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/{consumer_scope}/credentials/{credentials_name}` | `none` | [PHP](examples/connectors/deleteConnectorCredentials.php) |
+| `createConnector` | `POST /v1/connectors` | `json` | [PHP](examples/connectors/createConnector.php) |
+| `listConnectors` | `GET /v1/connectors` | `none` | [PHP](examples/connectors/listConnectors.php) |
+| `getConnectorAuthUrl` | `GET /v1/connectors/{connector_id_or_name}/auth_url` | `none` | [PHP](examples/connectors/getConnectorAuthUrl.php) |
+| `shareConnector` | `PUT /v1/connectors/{connector_id}/share` | `none` | [PHP](examples/connectors/shareConnector.php) |
+| `unshareConnector` | `DELETE /v1/connectors/{connector_id}/share` | `none` | [PHP](examples/connectors/unshareConnector.php) |
+| `activateForConsumerConnector` | `POST /v1/connectors/{connector_id}/{consumer_scope}/activate` | `none` | [PHP](examples/connectors/activateForConsumerConnector.php) |
+| `deactivateForConsumerConnector` | `POST /v1/connectors/{connector_id}/{consumer_scope}/deactivate` | `none` | [PHP](examples/connectors/deactivateForConsumerConnector.php) |
+| `listConnectorTools` | `GET /v1/connectors/{connector_id_or_name}/tools` | `none` | [PHP](examples/connectors/listConnectorTools.php) |
+| `getConnectorAuthenticationMethods` | `GET /v1/connectors/{connector_id_or_name}/authentication_methods` | `none` | [PHP](examples/connectors/getConnectorAuthenticationMethods.php) |
+| `listConnectorOrganizationCredentials` | `GET /v1/connectors/{connector_id_or_name}/organization/credentials` | `none` | [PHP](examples/connectors/listConnectorOrganizationCredentials.php) |
+| `listConnectorWorkspaceCredentials` | `GET /v1/connectors/{connector_id_or_name}/workspace/credentials` | `none` | [PHP](examples/connectors/listConnectorWorkspaceCredentials.php) |
+| `listConnectorUserCredentials` | `GET /v1/connectors/{connector_id_or_name}/user/credentials` | `none` | [PHP](examples/connectors/listConnectorUserCredentials.php) |
+| `deleteAllConnectorUserCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/user/credentials` | `none` | [PHP](examples/connectors/deleteAllConnectorUserCredentials.php) |
+| `retrieveConnector` | `GET /v1/connectors/{connector_id_or_name}` | `none` | [PHP](examples/connectors/retrieveConnector.php) |
+| `updateConnector` | `PATCH /v1/connectors/{connector_id}` | `json` | [PHP](examples/connectors/updateConnector.php) |
+| `deleteConnector` | `DELETE /v1/connectors/{connector_id}` | `none` | [PHP](examples/connectors/deleteConnector.php) |
 
-### Models
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `listModels` | `GET /v1/models` | `none` | [PHP](examples/models/listModels.php) |
-| `retrieveModel` | `GET /v1/models/{model_id}` | `none` | [PHP](examples/models/retrieveModel.php) |
-| `deleteModel` | `DELETE /v1/models/{model_id}` | `none` | [PHP](examples/models/deleteModel.php) |
-| `updateFineTunedModel` | `PATCH /v1/fine_tuning/models/{model_id}` | `json` | [PHP](examples/models/updateFineTunedModel.php) |
-| `archiveModel` | `POST /v1/fine_tuning/models/{model_id}/archive` | `none` | [PHP](examples/models/archiveModel.php) |
-| `unarchiveModel` | `DELETE /v1/fine_tuning/models/{model_id}/archive` | `none` | [PHP](examples/models/unarchiveModel.php) |
-
-### Conversations
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `startConversation` | `POST /v1/conversations` | `json` | [PHP](examples/conversations/startConversation.php) |
-| `listConversations` | `GET /v1/conversations` | `none` | [PHP](examples/conversations/listConversations.php) |
-| `retrieveConversation` | `GET /v1/conversations/{conversation_id}` | `none` | [PHP](examples/conversations/retrieveConversation.php) |
-| `deleteConversation` | `DELETE /v1/conversations/{conversation_id}` | `none` | [PHP](examples/conversations/deleteConversation.php) |
-| `appendConversation` | `POST /v1/conversations/{conversation_id}` | `json` | [PHP](examples/conversations/appendConversation.php) |
-| `listConversationHistory` | `GET /v1/conversations/{conversation_id}/history` | `none` | [PHP](examples/conversations/listConversationHistory.php) |
-| `listConversationMessages` | `GET /v1/conversations/{conversation_id}/messages` | `none` | [PHP](examples/conversations/listConversationMessages.php) |
-| `restartConversation` | `POST /v1/conversations/{conversation_id}/restart` | `json` | [PHP](examples/conversations/restartConversation.php) |
-| `startConversationStream` | `POST /v1/conversations` | `json` | [PHP](examples/conversations/startConversationStream.php) |
-| `appendConversationStream` | `POST /v1/conversations/{conversation_id}` | `json` | [PHP](examples/conversations/appendConversationStream.php) |
-| `restartConversationStream` | `POST /v1/conversations/{conversation_id}/restart` | `json` | [PHP](examples/conversations/restartConversationStream.php) |
-
-### Agents
+### Service Accounts
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `createAgent` | `POST /v1/agents` | `json` | [PHP](examples/agents/createAgent.php) |
-| `listAgents` | `GET /v1/agents` | `none` | [PHP](examples/agents/listAgents.php) |
-| `listAgentPages` | `GET /v1/agents/pages` | `none` | [PHP](examples/agents/listAgentPages.php) |
-| `retrieveAgent` | `GET /v1/agents/{agent_id}` | `none` | [PHP](examples/agents/retrieveAgent.php) |
-| `updateAgent` | `PATCH /v1/agents/{agent_id}` | `json` | [PHP](examples/agents/updateAgent.php) |
-| `deleteAgent` | `DELETE /v1/agents/{agent_id}` | `none` | [PHP](examples/agents/deleteAgent.php) |
-| `updateAgentVersion` | `PATCH /v1/agents/{agent_id}/version` | `none` | [PHP](examples/agents/updateAgentVersion.php) |
-| `listAgentVersions` | `GET /v1/agents/{agent_id}/versions` | `none` | [PHP](examples/agents/listAgentVersions.php) |
-| `retrieveAgentVersion` | `GET /v1/agents/{agent_id}/versions/{version}` | `none` | [PHP](examples/agents/retrieveAgentVersion.php) |
-| `upsertAgentVersionAlias` | `PUT /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/upsertAgentVersionAlias.php) |
-| `listAgentVersionAliases` | `GET /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/listAgentVersionAliases.php) |
-| `deleteAgentVersionAlias` | `DELETE /v1/agents/{agent_id}/aliases` | `none` | [PHP](examples/agents/deleteAgentVersionAlias.php) |
-| `createAgentsCompletion` | `POST /v1/agents/completions` | `json` | [PHP](examples/agents/createAgentsCompletion.php) |
+| `createServiceAccount` | `POST /v1/service-accounts` | `json` | [PHP](examples/service-accounts/createServiceAccount.php) |
+| `listServiceAccounts` | `GET /v1/service-accounts` | `none` | [PHP](examples/service-accounts/listServiceAccounts.php) |
+| `listAssignableServiceAccountRoles` | `GET /v1/service-accounts/assignable-roles` | `none` | [PHP](examples/service-accounts/listAssignableServiceAccountRoles.php) |
+| `retrieveServiceAccount` | `GET /v1/service-accounts/{service_account_id}` | `none` | [PHP](examples/service-accounts/retrieveServiceAccount.php) |
+| `updateServiceAccount` | `PATCH /v1/service-accounts/{service_account_id}` | `json` | [PHP](examples/service-accounts/updateServiceAccount.php) |
+| `deleteServiceAccount` | `DELETE /v1/service-accounts/{service_account_id}` | `none` | [PHP](examples/service-accounts/deleteServiceAccount.php) |
+| `setServiceAccountRoles` | `PUT /v1/service-accounts/{service_account_id}/roles` | `json` | [PHP](examples/service-accounts/setServiceAccountRoles.php) |
+| `listServiceAccountRoles` | `GET /v1/service-accounts/{service_account_id}/roles` | `none` | [PHP](examples/service-accounts/listServiceAccountRoles.php) |
 
-### Files
+### Observability / Datasets
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `uploadFile` | `POST /v1/files` | `multipart` | [PHP](examples/files/uploadFile.php) |
-| `listFiles` | `GET /v1/files` | `none` | [PHP](examples/files/listFiles.php) |
-| `retrieveFile` | `GET /v1/files/{file_id}` | `none` | [PHP](examples/files/retrieveFile.php) |
-| `deleteFile` | `DELETE /v1/files/{file_id}` | `none` | [PHP](examples/files/deleteFile.php) |
-| `downloadFile` | `GET /v1/files/{file_id}/content` | `none` | [PHP](examples/files/downloadFile.php) |
-| `retrieveFileSignedUrl` | `GET /v1/files/{file_id}/url` | `none` | [PHP](examples/files/retrieveFileSignedUrl.php) |
+| `postDatasetRecordsFromSpans` | `POST /v1/observability/datasets/{dataset_id}/imports/from-spans` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromSpans.php) |
+| `createDataset` | `POST /v1/observability/datasets` | `json` | [PHP](examples/observability/datasets/createDataset.php) |
+| `getDatasets` | `GET /v1/observability/datasets` | `none` | [PHP](examples/observability/datasets/getDatasets.php) |
+| `getDatasetById` | `GET /v1/observability/datasets/{dataset_id}` | `none` | [PHP](examples/observability/datasets/getDatasetById.php) |
+| `deleteDataset` | `DELETE /v1/observability/datasets/{dataset_id}` | `none` | [PHP](examples/observability/datasets/deleteDataset.php) |
+| `updateDataset` | `PATCH /v1/observability/datasets/{dataset_id}` | `json` | [PHP](examples/observability/datasets/updateDataset.php) |
+| `getDatasetRecords` | `GET /v1/observability/datasets/{dataset_id}/records` | `none` | [PHP](examples/observability/datasets/getDatasetRecords.php) |
+| `createDatasetRecord` | `POST /v1/observability/datasets/{dataset_id}/records` | `json` | [PHP](examples/observability/datasets/createDatasetRecord.php) |
+| `postDatasetRecordsFromFile` | `POST /v1/observability/datasets/{dataset_id}/imports/from-file` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromFile.php) |
+| `postDatasetRecordsFromPlayground` | `POST /v1/observability/datasets/{dataset_id}/imports/from-playground` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromPlayground.php) |
+| `postDatasetRecordsFromDataset` | `POST /v1/observability/datasets/{dataset_id}/imports/from-dataset` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromDataset.php) |
+| `exportDatasetToJsonl` | `GET /v1/observability/datasets/{dataset_id}/exports/to-jsonl` | `none` | [PHP](examples/observability/datasets/exportDatasetToJsonl.php) |
+| `getDatasetImportTask` | `GET /v1/observability/datasets/{dataset_id}/tasks/{task_id}` | `none` | [PHP](examples/observability/datasets/getDatasetImportTask.php) |
+| `getDatasetImportTasks` | `GET /v1/observability/datasets/{dataset_id}/tasks` | `none` | [PHP](examples/observability/datasets/getDatasetImportTasks.php) |
 
-### Batch
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `listBatchJobs` | `GET /v1/batch/jobs` | `none` | [PHP](examples/batch/listBatchJobs.php) |
-| `createBatchJob` | `POST /v1/batch/jobs` | `json` | [PHP](examples/batch/createBatchJob.php) |
-| `retrieveBatchJob` | `GET /v1/batch/jobs/{job_id}` | `none` | [PHP](examples/batch/retrieveBatchJob.php) |
-| `deleteBatchJob` | `DELETE /v1/batch/jobs/{job_id}` | `none` | [PHP](examples/batch/deleteBatchJob.php) |
-| `cancelBatchJob` | `POST /v1/batch/jobs/{job_id}/cancel` | `none` | [PHP](examples/batch/cancelBatchJob.php) |
-
-### Chat
+### Observability / Pipelines
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `createChatCompletion` | `POST /v1/chat/completions` | `json` | [PHP](examples/chat/createChatCompletion.php) |
+| `createPipeline` | `POST /v1/observability/pipelines` | `json` | [PHP](examples/observability/pipelines/createPipeline.php) |
+| `listPipelines` | `GET /v1/observability/pipelines` | `none` | [PHP](examples/observability/pipelines/listPipelines.php) |
+| `retrievePipeline` | `GET /v1/observability/pipelines/{pipeline_id}` | `none` | [PHP](examples/observability/pipelines/retrievePipeline.php) |
+| `updatePipeline` | `PUT /v1/observability/pipelines/{pipeline_id}` | `json` | [PHP](examples/observability/pipelines/updatePipeline.php) |
+| `deletePipeline` | `DELETE /v1/observability/pipelines/{pipeline_id}` | `none` | [PHP](examples/observability/pipelines/deletePipeline.php) |
 
-### Fim
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createFimCompletion` | `POST /v1/fim/completions` | `json` | [PHP](examples/fim/createFimCompletion.php) |
-
-### Embeddings
+### Observability / Spans
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `createEmbedding` | `POST /v1/embeddings` | `json` | [PHP](examples/embeddings/createEmbedding.php) |
+| `aggregateSpanEvaluations` | `POST /v1/observability/spans/evaluations/aggregate` | `json` | [PHP](examples/observability/spans/aggregateSpanEvaluations.php) |
+| `searchPipelineResults` | `POST /v1/observability/pipeline-results/search` | `json` | [PHP](examples/observability/spans/searchPipelineResults.php) |
+| `searchSpans` | `POST /v1/observability/spans/search` | `json` | [PHP](examples/observability/spans/searchSpans.php) |
+| `aggregateSpans` | `POST /v1/observability/spans/aggregate` | `json` | [PHP](examples/observability/spans/aggregateSpans.php) |
+| `searchSpanEvaluations` | `POST /v1/observability/spans/evaluations/search` | `json` | [PHP](examples/observability/spans/searchSpanEvaluations.php) |
+| `searchLatestSpanEvaluations` | `POST /v1/observability/spans/evaluations/search/latest` | `json` | [PHP](examples/observability/spans/searchLatestSpanEvaluations.php) |
+| `getSpanFields` | `GET /v1/observability/spans/fields` | `none` | [PHP](examples/observability/spans/getSpanFields.php) |
+| `getSpanEvaluationFields` | `GET /v1/observability/spans/evaluations/fields` | `none` | [PHP](examples/observability/spans/getSpanEvaluationFields.php) |
+| `getSpanFieldOptions` | `GET /v1/observability/spans/fields/{field_name}/options` | `none` | [PHP](examples/observability/spans/getSpanFieldOptions.php) |
+| `getSpanEvaluationFieldOptions` | `GET /v1/observability/spans/evaluations/fields/{field_name}/options` | `none` | [PHP](examples/observability/spans/getSpanEvaluationFieldOptions.php) |
 
-### Classifiers
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createModeration` | `POST /v1/moderations` | `json` | [PHP](examples/classifiers/createModeration.php) |
-| `createChatModeration` | `POST /v1/chat/moderations` | `json` | [PHP](examples/classifiers/createChatModeration.php) |
-| `createClassification` | `POST /v1/classifications` | `json` | [PHP](examples/classifiers/createClassification.php) |
-| `createChatClassification` | `POST /v1/chat/classifications` | `json` | [PHP](examples/classifiers/createChatClassification.php) |
-
-### Ocr
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createOcr` | `POST /v1/ocr` | `json` | [PHP](examples/ocr/createOcr.php) |
-
-### Libraries
+### Observability / Projects
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `listLibraries` | `GET /v1/libraries` | `none` | [PHP](examples/libraries/listLibraries.php) |
-| `createLibrary` | `POST /v1/libraries` | `json` | [PHP](examples/libraries/createLibrary.php) |
-| `retrieveLibrary` | `GET /v1/libraries/{library_id}` | `none` | [PHP](examples/libraries/retrieveLibrary.php) |
-| `deleteLibrary` | `DELETE /v1/libraries/{library_id}` | `none` | [PHP](examples/libraries/deleteLibrary.php) |
-| `patchLibrary` | `PATCH /v1/libraries/{library_id}` | `json` | [PHP](examples/libraries/patchLibrary.php) |
-| `updateLibrary` | `PUT /v1/libraries/{library_id}` | `json` | [PHP](examples/libraries/updateLibrary.php) |
+| `listObservabilityProjects` | `GET /v1/observability/projects` | `none` | [PHP](examples/observability/projects/listObservabilityProjects.php) |
+| `retrieveObservabilityProject` | `GET /v1/observability/projects/{project_slug}` | `none` | [PHP](examples/observability/projects/retrieveObservabilityProject.php) |
 
-### Libraries / Documents
+### Observability / Evaluations
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `listLibraryDocuments` | `GET /v1/libraries/{library_id}/documents` | `none` | [PHP](examples/libraries/documents/listLibraryDocuments.php) |
-| `uploadLibraryDocument` | `POST /v1/libraries/{library_id}/documents` | `multipart` | [PHP](examples/libraries/documents/uploadLibraryDocument.php) |
-| `retrieveLibraryDocument` | `GET /v1/libraries/{library_id}/documents/{document_id}` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocument.php) |
-| `patchLibraryDocument` | `PATCH /v1/libraries/{library_id}/documents/{document_id}` | `json` | [PHP](examples/libraries/documents/patchLibraryDocument.php) |
-| `updateLibraryDocument` | `PUT /v1/libraries/{library_id}/documents/{document_id}` | `json` | [PHP](examples/libraries/documents/updateLibraryDocument.php) |
-| `deleteLibraryDocument` | `DELETE /v1/libraries/{library_id}/documents/{document_id}` | `none` | [PHP](examples/libraries/documents/deleteLibraryDocument.php) |
-| `retrieveLibraryDocumentTextContent` | `GET /v1/libraries/{library_id}/documents/{document_id}/text_content` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentTextContent.php) |
-| `retrieveLibraryDocumentStatus` | `GET /v1/libraries/{library_id}/documents/{document_id}/status` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentStatus.php) |
-| `retrieveLibraryDocumentSignedUrl` | `GET /v1/libraries/{library_id}/documents/{document_id}/signed-url` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentSignedUrl.php) |
-| `retrieveLibraryDocumentExtractedTextSignedUrl` | `GET /v1/libraries/{library_id}/documents/{document_id}/extracted-text-signed-url` | `none` | [PHP](examples/libraries/documents/retrieveLibraryDocumentExtractedTextSignedUrl.php) |
-| `reprocessLibraryDocument` | `POST /v1/libraries/{library_id}/documents/{document_id}/reprocess` | `none` | [PHP](examples/libraries/documents/reprocessLibraryDocument.php) |
+| `listProjectEvaluations` | `GET /v1/observability/projects/{project_slug}/evaluations_v2` | `none` | [PHP](examples/observability/evaluations/listProjectEvaluations.php) |
+| `retrieveEvaluation` | `GET /v1/observability/evaluations_v2/{evaluation_slug}` | `none` | [PHP](examples/observability/evaluations/retrieveEvaluation.php) |
 
-### Libraries / Shares
+### Observability / Evaluations / Runs
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `listLibraryShares` | `GET /v1/libraries/{library_id}/share` | `none` | [PHP](examples/libraries/shares/listLibraryShares.php) |
-| `upsertLibraryShare` | `PUT /v1/libraries/{library_id}/share` | `json` | [PHP](examples/libraries/shares/upsertLibraryShare.php) |
-| `deleteLibraryShare` | `DELETE /v1/libraries/{library_id}/share` | `json` | [PHP](examples/libraries/shares/deleteLibraryShare.php) |
+| `searchEvaluationRuns` | `POST /v1/observability/evaluations_v2/{evaluation_slug}/runs/search` | `json` | [PHP](examples/observability/evaluations/runs/searchEvaluationRuns.php) |
+| `searchAllEvaluationRuns` | `POST /v1/observability/evaluation-runs_v2/search` | `json` | [PHP](examples/observability/evaluations/runs/searchAllEvaluationRuns.php) |
+| `retrieveEvaluationRun` | `GET /v1/observability/evaluation-runs_v2/{run_id}` | `none` | [PHP](examples/observability/evaluations/runs/retrieveEvaluationRun.php) |
+| `getEvaluationRunStatistics` | `GET /v1/observability/evaluation-runs_v2/{run_id}/statistics` | `none` | [PHP](examples/observability/evaluations/runs/getEvaluationRunStatistics.php) |
+| `computeEvaluationRunStatistics` | `POST /v1/observability/evaluation-runs_v2/{run_id}/statistics/compute` | `json` | [PHP](examples/observability/evaluations/runs/computeEvaluationRunStatistics.php) |
 
-### Observability / Chat Completion Events
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `getChatCompletionEvents` | `POST /v1/observability/chat-completion-events/search` | `json` | [PHP](examples/observability/chat-completion-events/getChatCompletionEvents.php) |
-| `getChatCompletionEventIds` | `POST /v1/observability/chat-completion-events/search-ids` | `json` | [PHP](examples/observability/chat-completion-events/getChatCompletionEventIds.php) |
-| `getChatCompletionEvent` | `GET /v1/observability/chat-completion-events/{event_id}` | `none` | [PHP](examples/observability/chat-completion-events/getChatCompletionEvent.php) |
-| `getSimilarChatCompletionEvents` | `GET /v1/observability/chat-completion-events/{event_id}/similar-events` | `none` | [PHP](examples/observability/chat-completion-events/getSimilarChatCompletionEvents.php) |
-| `judgeChatCompletionEvent` | `POST /v1/observability/chat-completion-events/{event_id}/live-judging` | `json` | [PHP](examples/observability/chat-completion-events/judgeChatCompletionEvent.php) |
-
-### Observability / Chat Completion Events / Fields
+### Observability / Evaluations / Records
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `getChatCompletionFields` | `GET /v1/observability/chat-completion-fields` | `none` | [PHP](examples/observability/chat-completion-events/fields/getChatCompletionFields.php) |
-| `getChatCompletionFieldOptions` | `GET /v1/observability/chat-completion-fields/{field_name}/options` | `none` | [PHP](examples/observability/chat-completion-events/fields/getChatCompletionFieldOptions.php) |
-| `getChatCompletionFieldOptionsCounts` | `POST /v1/observability/chat-completion-fields/{field_name}/options-counts` | `json` | [PHP](examples/observability/chat-completion-events/fields/getChatCompletionFieldOptionsCounts.php) |
+| `retrieveEvaluationRunRecord` | `GET /v1/observability/evaluation-runs_v2/{run_id}/records/{record_id}` | `none` | [PHP](examples/observability/evaluations/records/retrieveEvaluationRunRecord.php) |
+| `searchEvaluationRunRecords` | `POST /v1/observability/evaluation-runs_v2/{run_id}/records/search` | `json` | [PHP](examples/observability/evaluations/records/searchEvaluationRunRecords.php) |
+
+### Observability / Evaluations / Optimizations
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listOptimizations` | `GET /v1/observability/optimizations` | `none` | [PHP](examples/observability/evaluations/optimizations/listOptimizations.php) |
+| `retrieveOptimization` | `GET /v1/observability/optimizations/{optimization_id}` | `none` | [PHP](examples/observability/evaluations/optimizations/retrieveOptimization.php) |
+| `listOptimizationTrials` | `GET /v1/observability/optimizations/{optimization_id}/trials` | `none` | [PHP](examples/observability/evaluations/optimizations/listOptimizationTrials.php) |
+
+### Workflows / Deployments
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `unhardenDeployment` | `POST /v1/workflows/deployments/{deployment_id}/unharden` | `none` | [PHP](examples/workflows/deployments/unhardenDeployment.php) |
+| `listDeployments` | `GET /v1/workflows/deployments` | `none` | [PHP](examples/workflows/deployments/listDeployments.php) |
+| `createDeployment` | `POST /v1/workflows/deployments` | `json` | [PHP](examples/workflows/deployments/createDeployment.php) |
+| `updateDeployment` | `PATCH /v1/workflows/deployments/{name}` | `json` | [PHP](examples/workflows/deployments/updateDeployment.php) |
+| `deleteDeployment` | `DELETE /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/deleteDeployment.php) |
+| `getDeployment` | `GET /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/getDeployment.php) |
+| `stopDeployment` | `POST /v1/workflows/deployments/{name}/stop` | `none` | [PHP](examples/workflows/deployments/stopDeployment.php) |
+| `startDeployment` | `POST /v1/workflows/deployments/{name}/start` | `none` | [PHP](examples/workflows/deployments/startDeployment.php) |
+| `restartDeployment` | `POST /v1/workflows/deployments/{name}/restart` | `none` | [PHP](examples/workflows/deployments/restartDeployment.php) |
+| `listDeploymentWorkers` | `GET /v1/workflows/deployments/{name}/workers` | `none` | [PHP](examples/workflows/deployments/listDeploymentWorkers.php) |
+| `getDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs` | `none` | [PHP](examples/workflows/deployments/getDeploymentLogs.php) |
+| `streamDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs/stream` | `none` | [PHP](examples/workflows/deployments/streamDeploymentLogs.php) |
+
+### RAG / Managed Indexes
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createManagedIndex` | `POST /v1/rag/managed_indexes` | `json` | [PHP](examples/rag/managed-indexes/createManagedIndex.php) |
+| `listManagedIndexes` | `GET /v1/rag/managed_indexes` | `none` | [PHP](examples/rag/managed-indexes/listManagedIndexes.php) |
+| `retrieveManagedIndex` | `GET /v1/rag/managed_indexes/{index_name}` | `none` | [PHP](examples/rag/managed-indexes/retrieveManagedIndex.php) |
+| `updateManagedIndex` | `PUT /v1/rag/managed_indexes/{index_name}` | `json` | [PHP](examples/rag/managed-indexes/updateManagedIndex.php) |
+| `deleteManagedIndex` | `DELETE /v1/rag/managed_indexes/{index_name}` | `none` | [PHP](examples/rag/managed-indexes/deleteManagedIndex.php) |
+| `ingestManagedIndexDocuments` | `POST /v1/rag/managed_indexes/{index_name}/documents` | `json` | [PHP](examples/rag/managed-indexes/ingestManagedIndexDocuments.php) |
+| `deleteManagedIndexDocuments` | `DELETE /v1/rag/managed_indexes/{index_name}/documents` | `json` | [PHP](examples/rag/managed-indexes/deleteManagedIndexDocuments.php) |
+| `searchManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/search` | `json` | [PHP](examples/rag/managed-indexes/searchManagedIndex.php) |
+| `navigateManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/navigate` | `json` | [PHP](examples/rag/managed-indexes/navigateManagedIndex.php) |
+| `readManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/read` | `json` | [PHP](examples/rag/managed-indexes/readManagedIndex.php) |
+| `grepManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/grep` | `json` | [PHP](examples/rag/managed-indexes/grepManagedIndex.php) |
+| `retrieveManagedIndexChunk` | `GET /v1/rag/managed_indexes/{index_name}/chunks/{chunk_id}` | `none` | [PHP](examples/rag/managed-indexes/retrieveManagedIndexChunk.php) |
+
+### Users
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `getWhoAmI` | `GET /v1/whoami` | `none` | [PHP](examples/users/getWhoAmI.php) |
+| `getIdentity` | `GET /v1/users/me` | `none` | [PHP](examples/users/getIdentity.php) |
+| `listOrganizations` | `GET /v1/users/me/organizations` | `none` | [PHP](examples/users/listOrganizations.php) |
+| `listWorkspaces` | `GET /v1/users/me/workspaces` | `none` | [PHP](examples/users/listWorkspaces.php) |
 
 ### Observability / Judges
 
@@ -378,37 +584,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `deleteJudge` | `DELETE /v1/observability/judges/{judge_id}` | `none` | [PHP](examples/observability/judges/deleteJudge.php) |
 | `updateJudge` | `PUT /v1/observability/judges/{judge_id}` | `json` | [PHP](examples/observability/judges/updateJudge.php) |
 | `judgeConversation` | `POST /v1/observability/judges/{judge_id}/live-judging` | `json` | [PHP](examples/observability/judges/judgeConversation.php) |
-
-### Observability / Campaigns
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createCampaign` | `POST /v1/observability/campaigns` | `json` | [PHP](examples/observability/campaigns/createCampaign.php) |
-| `getCampaigns` | `GET /v1/observability/campaigns` | `none` | [PHP](examples/observability/campaigns/getCampaigns.php) |
-| `getCampaignById` | `GET /v1/observability/campaigns/{campaign_id}` | `none` | [PHP](examples/observability/campaigns/getCampaignById.php) |
-| `deleteCampaign` | `DELETE /v1/observability/campaigns/{campaign_id}` | `none` | [PHP](examples/observability/campaigns/deleteCampaign.php) |
-| `getCampaignStatusById` | `GET /v1/observability/campaigns/{campaign_id}/status` | `none` | [PHP](examples/observability/campaigns/getCampaignStatusById.php) |
-| `getCampaignSelectedEvents` | `GET /v1/observability/campaigns/{campaign_id}/selected-events` | `none` | [PHP](examples/observability/campaigns/getCampaignSelectedEvents.php) |
-
-### Observability / Datasets
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createDataset` | `POST /v1/observability/datasets` | `json` | [PHP](examples/observability/datasets/createDataset.php) |
-| `getDatasets` | `GET /v1/observability/datasets` | `none` | [PHP](examples/observability/datasets/getDatasets.php) |
-| `getDatasetById` | `GET /v1/observability/datasets/{dataset_id}` | `none` | [PHP](examples/observability/datasets/getDatasetById.php) |
-| `deleteDataset` | `DELETE /v1/observability/datasets/{dataset_id}` | `none` | [PHP](examples/observability/datasets/deleteDataset.php) |
-| `updateDataset` | `PATCH /v1/observability/datasets/{dataset_id}` | `json` | [PHP](examples/observability/datasets/updateDataset.php) |
-| `getDatasetRecords` | `GET /v1/observability/datasets/{dataset_id}/records` | `none` | [PHP](examples/observability/datasets/getDatasetRecords.php) |
-| `createDatasetRecord` | `POST /v1/observability/datasets/{dataset_id}/records` | `json` | [PHP](examples/observability/datasets/createDatasetRecord.php) |
-| `postDatasetRecordsFromCampaign` | `POST /v1/observability/datasets/{dataset_id}/imports/from-campaign` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromCampaign.php) |
-| `postDatasetRecordsFromExplorer` | `POST /v1/observability/datasets/{dataset_id}/imports/from-explorer` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromExplorer.php) |
-| `postDatasetRecordsFromFile` | `POST /v1/observability/datasets/{dataset_id}/imports/from-file` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromFile.php) |
-| `postDatasetRecordsFromPlayground` | `POST /v1/observability/datasets/{dataset_id}/imports/from-playground` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromPlayground.php) |
-| `postDatasetRecordsFromDataset` | `POST /v1/observability/datasets/{dataset_id}/imports/from-dataset` | `json` | [PHP](examples/observability/datasets/postDatasetRecordsFromDataset.php) |
-| `exportDatasetToJsonl` | `GET /v1/observability/datasets/{dataset_id}/exports/to-jsonl` | `none` | [PHP](examples/observability/datasets/exportDatasetToJsonl.php) |
-| `getDatasetImportTask` | `GET /v1/observability/datasets/{dataset_id}/tasks/{task_id}` | `none` | [PHP](examples/observability/datasets/getDatasetImportTask.php) |
-| `getDatasetImportTasks` | `GET /v1/observability/datasets/{dataset_id}/tasks` | `none` | [PHP](examples/observability/datasets/getDatasetImportTasks.php) |
 
 ### Observability / Datasets / Records
 
@@ -440,47 +615,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `getTraceSpans` | `GET /v1/observability/traces/{trace_id}/spans` | `none` | [PHP](examples/observability/traces/getTraceSpans.php) |
 | `getTraceFieldOptions` | `GET /v1/observability/traces/fields/{field_name}/options` | `none` | [PHP](examples/observability/traces/getTraceFieldOptions.php) |
 | `getSpanById` | `GET /v1/observability/traces/{trace_id}/spans/{span_id}` | `none` | [PHP](examples/observability/traces/getSpanById.php) |
-
-### Observability / Spans
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `searchSpans` | `POST /v1/observability/spans/search` | `json` | [PHP](examples/observability/spans/searchSpans.php) |
-| `aggregateSpans` | `POST /v1/observability/spans/aggregate` | `json` | [PHP](examples/observability/spans/aggregateSpans.php) |
-| `searchSpanEvaluations` | `POST /v1/observability/spans/evaluations/search` | `json` | [PHP](examples/observability/spans/searchSpanEvaluations.php) |
-| `searchLatestSpanEvaluations` | `POST /v1/observability/spans/evaluations/search/latest` | `json` | [PHP](examples/observability/spans/searchLatestSpanEvaluations.php) |
-| `getSpanFields` | `GET /v1/observability/spans/fields` | `none` | [PHP](examples/observability/spans/getSpanFields.php) |
-| `getSpanEvaluationFields` | `GET /v1/observability/spans/evaluations/fields` | `none` | [PHP](examples/observability/spans/getSpanEvaluationFields.php) |
-| `getSpanFieldOptions` | `GET /v1/observability/spans/fields/{field_name}/options` | `none` | [PHP](examples/observability/spans/getSpanFieldOptions.php) |
-| `getSpanEvaluationFieldOptions` | `GET /v1/observability/spans/evaluations/fields/{field_name}/options` | `none` | [PHP](examples/observability/spans/getSpanEvaluationFieldOptions.php) |
-
-### Connectors
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `createConnector` | `POST /v1/connectors` | `json` | [PHP](examples/connectors/createConnector.php) |
-| `listConnectors` | `GET /v1/connectors` | `none` | [PHP](examples/connectors/listConnectors.php) |
-| `getConnectorAuthUrl` | `GET /v1/connectors/{connector_id_or_name}/auth_url` | `none` | [PHP](examples/connectors/getConnectorAuthUrl.php) |
-| `shareConnector` | `PUT /v1/connectors/{connector_id}/share` | `none` | [PHP](examples/connectors/shareConnector.php) |
-| `unshareConnector` | `DELETE /v1/connectors/{connector_id}/share` | `none` | [PHP](examples/connectors/unshareConnector.php) |
-| `activateForConsumerConnector` | `POST /v1/connectors/{connector_id}/{consumer_scope}/activate` | `none` | [PHP](examples/connectors/activateForConsumerConnector.php) |
-| `deactivateForConsumerConnector` | `POST /v1/connectors/{connector_id}/{consumer_scope}/deactivate` | `none` | [PHP](examples/connectors/deactivateForConsumerConnector.php) |
-| `callConnectorTool` | `POST /v1/connectors/{connector_id_or_name}/tools/{tool_name}/call` | `json` | [PHP](examples/connectors/callConnectorTool.php) |
-| `listConnectorTools` | `GET /v1/connectors/{connector_id_or_name}/tools` | `none` | [PHP](examples/connectors/listConnectorTools.php) |
-| `getConnectorAuthenticationMethods` | `GET /v1/connectors/{connector_id_or_name}/authentication_methods` | `none` | [PHP](examples/connectors/getConnectorAuthenticationMethods.php) |
-| `listConnectorOrganizationCredentials` | `GET /v1/connectors/{connector_id_or_name}/organization/credentials` | `none` | [PHP](examples/connectors/listConnectorOrganizationCredentials.php) |
-| `createOrUpdateConnectorOrganizationCredentials` | `POST /v1/connectors/{connector_id_or_name}/organization/credentials` | `json` | [PHP](examples/connectors/createOrUpdateConnectorOrganizationCredentials.php) |
-| `listConnectorWorkspaceCredentials` | `GET /v1/connectors/{connector_id_or_name}/workspace/credentials` | `none` | [PHP](examples/connectors/listConnectorWorkspaceCredentials.php) |
-| `createOrUpdateConnectorWorkspaceCredentials` | `POST /v1/connectors/{connector_id_or_name}/workspace/credentials` | `json` | [PHP](examples/connectors/createOrUpdateConnectorWorkspaceCredentials.php) |
-| `listConnectorUserCredentials` | `GET /v1/connectors/{connector_id_or_name}/user/credentials` | `none` | [PHP](examples/connectors/listConnectorUserCredentials.php) |
-| `createOrUpdateConnectorUserCredentials` | `POST /v1/connectors/{connector_id_or_name}/user/credentials` | `json` | [PHP](examples/connectors/createOrUpdateConnectorUserCredentials.php) |
-| `deleteAllConnectorUserCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/user/credentials` | `none` | [PHP](examples/connectors/deleteAllConnectorUserCredentials.php) |
-| `deleteConnectorOrganizationCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/organization/credentials/{credentials_name}` | `none` | [PHP](examples/connectors/deleteConnectorOrganizationCredentials.php) |
-| `deleteConnectorWorkspaceCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/workspace/credentials/{credentials_name}` | `none` | [PHP](examples/connectors/deleteConnectorWorkspaceCredentials.php) |
-| `deleteConnectorUserCredentials` | `DELETE /v1/connectors/{connector_id_or_name}/user/credentials/{credentials_name}` | `none` | [PHP](examples/connectors/deleteConnectorUserCredentials.php) |
-| `retrieveConnector` | `GET /v1/connectors/{connector_id_or_name}` | `none` | [PHP](examples/connectors/retrieveConnector.php) |
-| `updateConnector` | `PATCH /v1/connectors/{connector_id}` | `json` | [PHP](examples/connectors/updateConnector.php) |
-| `deleteConnector` | `DELETE /v1/connectors/{connector_id}` | `none` | [PHP](examples/connectors/deleteConnector.php) |
 
 ### Workflows / Executions
 
@@ -538,22 +672,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `getStreamEvents` | `GET /v1/workflows/events/stream` | `none` | [PHP](examples/workflows/events/getStreamEvents.php) |
 | `getWorkflowEvents` | `GET /v1/workflows/events/list` | `none` | [PHP](examples/workflows/events/getWorkflowEvents.php) |
 
-### Workflows / Deployments
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `listDeployments` | `GET /v1/workflows/deployments` | `none` | [PHP](examples/workflows/deployments/listDeployments.php) |
-| `createDeployment` | `POST /v1/workflows/deployments` | `json` | [PHP](examples/workflows/deployments/createDeployment.php) |
-| `updateDeployment` | `PATCH /v1/workflows/deployments/{name}` | `json` | [PHP](examples/workflows/deployments/updateDeployment.php) |
-| `deleteDeployment` | `DELETE /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/deleteDeployment.php) |
-| `getDeployment` | `GET /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/getDeployment.php) |
-| `stopDeployment` | `POST /v1/workflows/deployments/{name}/stop` | `none` | [PHP](examples/workflows/deployments/stopDeployment.php) |
-| `startDeployment` | `POST /v1/workflows/deployments/{name}/start` | `none` | [PHP](examples/workflows/deployments/startDeployment.php) |
-| `restartDeployment` | `POST /v1/workflows/deployments/{name}/restart` | `none` | [PHP](examples/workflows/deployments/restartDeployment.php) |
-| `listDeploymentWorkers` | `GET /v1/workflows/deployments/{name}/workers` | `none` | [PHP](examples/workflows/deployments/listDeploymentWorkers.php) |
-| `getDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs` | `none` | [PHP](examples/workflows/deployments/getDeploymentLogs.php) |
-| `streamDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs/stream` | `none` | [PHP](examples/workflows/deployments/streamDeploymentLogs.php) |
-
 ### Workflows
 
 | SDK method | HTTP route | Request body | Example |
@@ -561,7 +679,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `getWorkflows` | `GET /v1/workflows` | `none` | [PHP](examples/workflows/getWorkflows.php) |
 | `getWorkflowRegistrations` | `GET /v1/workflows/registrations` | `none` | [PHP](examples/workflows/getWorkflowRegistrations.php) |
 | `executeWorkflow` | `POST /v1/workflows/{workflow_identifier}/execute` | `json` | [PHP](examples/workflows/executeWorkflow.php) |
-| `executeWorkflowRegistration` | `POST /v1/workflows/registrations/{workflow_registration_id}/execute` | `json` | [PHP](examples/workflows/executeWorkflowRegistration.php) |
 | `getWorkflow` | `GET /v1/workflows/{workflow_identifier}` | `none` | [PHP](examples/workflows/getWorkflow.php) |
 | `updateWorkflow` | `PUT /v1/workflows/{workflow_identifier}` | `json` | [PHP](examples/workflows/updateWorkflow.php) |
 | `getWorkflowRegistration` | `GET /v1/workflows/registrations/{workflow_registration_id}` | `none` | [PHP](examples/workflows/getWorkflowRegistration.php) |
@@ -570,7 +687,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `archiveWorkflow` | `PUT /v1/workflows/{workflow_identifier}/archive` | `none` | [PHP](examples/workflows/archiveWorkflow.php) |
 | `unarchiveWorkflow` | `PUT /v1/workflows/{workflow_identifier}/unarchive` | `none` | [PHP](examples/workflows/unarchiveWorkflow.php) |
 
-### Rag / Ingestion
+### RAG / Ingestion
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
@@ -578,7 +695,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `registerConfig` | `PUT /v1/rag/ingestion_pipeline_configurations` | `json` | [PHP](examples/rag/ingestion/registerConfig.php) |
 | `updateRunInfo` | `PUT /v1/rag/ingestion_pipeline_configurations/{id}/run_info` | `json` | [PHP](examples/rag/ingestion/updateRunInfo.php) |
 
-### Rag / Search Indexes
+### RAG / Search Indexes
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
@@ -587,18 +704,21 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `unregisterDeployment` | `DELETE /v1/rag/deployments/{deployment_id}` | `none` | [PHP](examples/rag/search-indexes/unregisterDeployment.php) |
 | `updateIndexMetrics` | `PUT /v1/rag/deployments/{deployment_id}/metrics` | `json` | [PHP](examples/rag/search-indexes/updateIndexMetrics.php) |
 
-### Users
+### Administration / Billing
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `getIdentity` | `GET /v1/users/me` | `none` | [PHP](examples/users/getIdentity.php) |
-| `listOrganizations` | `GET /v1/users/me/organizations` | `none` | [PHP](examples/users/listOrganizations.php) |
-| `listWorkspaces` | `GET /v1/users/me/workspaces` | `none` | [PHP](examples/users/listWorkspaces.php) |
+| `queryAdminUsage` | `POST /v1/admin/usage/query` | `json` | [PHP](examples/administration/billing/queryAdminUsage.php) |
+| `listAdminRateLimits` | `GET /v1/admin/rate-limit` | `none` | [PHP](examples/administration/billing/listAdminRateLimits.php) |
+| `listAdminSpendLimits` | `GET /v1/admin/spend-limit` | `none` | [PHP](examples/administration/billing/listAdminSpendLimits.php) |
+| `updateAdminSpendLimits` | `POST /v1/admin/spend-limit` | `json` | [PHP](examples/administration/billing/updateAdminSpendLimits.php) |
+| `listAdminUsage` | `GET /v1/admin/usage` | `none` | [PHP](examples/administration/billing/listAdminUsage.php) |
 
 ### Administration / Users
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
+| `deactivateAdminUser` | `POST /v1/admin/users/{user_id}/deactivate` | `none` | [PHP](examples/administration/users/deactivateAdminUser.php) |
 | `listAdminUsers` | `GET /v1/admin/users` | `none` | [PHP](examples/administration/users/listAdminUsers.php) |
 | `createAdminUsers` | `POST /v1/admin/users` | `json` | [PHP](examples/administration/users/createAdminUsers.php) |
 | `inviteAdminUsers` | `POST /v1/admin/users-invite` | `json` | [PHP](examples/administration/users/inviteAdminUsers.php) |
@@ -621,15 +741,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `addAdminOrUpdateUsersWorkspaces` | `PATCH /v1/admin/workspaces/{workspace_uuid}/users` | `json` | [PHP](examples/administration/workspaces/addAdminOrUpdateUsersWorkspaces.php) |
 | `removeAdminUsersWorkspaces` | `DELETE /v1/admin/workspaces/{workspace_uuid}/remove-users` | `json` | [PHP](examples/administration/workspaces/removeAdminUsersWorkspaces.php) |
 
-### Administration / Billing
-
-| SDK method | HTTP route | Request body | Example |
-| --- | --- | --- | --- |
-| `listAdminRateLimits` | `GET /v1/admin/rate-limit` | `none` | [PHP](examples/administration/billing/listAdminRateLimits.php) |
-| `listAdminSpendLimits` | `GET /v1/admin/spend-limit` | `none` | [PHP](examples/administration/billing/listAdminSpendLimits.php) |
-| `updateAdminSpendLimits` | `POST /v1/admin/spend-limit` | `json` | [PHP](examples/administration/billing/updateAdminSpendLimits.php) |
-| `listAdminUsage` | `GET /v1/admin/usage` | `none` | [PHP](examples/administration/billing/listAdminUsage.php) |
-
 ### Administration / Audit Logs
 
 | SDK method | HTTP route | Request body | Example |
@@ -642,7 +753,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | --- | --- | --- | --- |
 | `listAdminUserGroups` | `GET /v1/admin/user-groups` | `none` | [PHP](examples/administration/user-groups/listAdminUserGroups.php) |
 | `createAdminUserGroup` | `POST /v1/admin/user-groups` | `json` | [PHP](examples/administration/user-groups/createAdminUserGroup.php) |
-| `provisionAdminGroupToWorkspace` | `POST /v1/admin/user-groups/provision-workspace` | `json` | [PHP](examples/administration/user-groups/provisionAdminGroupToWorkspace.php) |
 | `retrieveAdminUserGroup` | `GET /v1/admin/user-groups/{group_uuid}` | `none` | [PHP](examples/administration/user-groups/retrieveAdminUserGroup.php) |
 | `updateAdminUserGroup` | `PATCH /v1/admin/user-groups/{group_uuid}` | `json` | [PHP](examples/administration/user-groups/updateAdminUserGroup.php) |
 | `deleteAdminUserGroup` | `DELETE /v1/admin/user-groups/{group_uuid}` | `none` | [PHP](examples/administration/user-groups/deleteAdminUserGroup.php) |
@@ -657,7 +767,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `retrieveAdminNestedGroupsAdmin` | `GET /v1/admin/user-groups/{group_uuid}/nested` | `none` | [PHP](examples/administration/user-groups/retrieveAdminNestedGroupsAdmin.php) |
 | `setAdminNestedGroupsAdmin` | `PATCH /v1/admin/user-groups/{group_uuid}/nested` | `json` | [PHP](examples/administration/user-groups/setAdminNestedGroupsAdmin.php) |
 
-### Administration / Api Keys
+### Administration / API Keys
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
@@ -665,7 +775,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `createAdminApiKey` | `POST /v1/admin/api-keys` | `json` | [PHP](examples/administration/api-keys/createAdminApiKey.php) |
 | `deleteAdminApiKey` | `DELETE /v1/admin/api-keys/{key_id}` | `none` | [PHP](examples/administration/api-keys/deleteAdminApiKey.php) |
 
-### Administration / Scim
+### Administration / SCIM
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
@@ -688,6 +798,46 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `usageAdminByOrganization` | `GET /v1/admin/analytics/vibe/code/usage/by_organization` | `none` | [PHP](examples/administration/vibe-code-analytics/usageAdminByOrganization.php) |
 
 <!-- ENDPOINT CATALOG END -->
+
+## Custom API Origin
+
+Pass a hostname or absolute base URL through the constructor's `origin` argument. `basePath` overrides the path
+in an absolute origin. Without an override, the SDK selects `/v1` or `/v2` for each endpoint. Examples read
+`MISTRAL_API_ORIGIN` and `MISTRAL_API_BASE_PATH` from `.env`.
+
+## Migration Notes
+
+- PHP 8.1 is no longer supported. Each supported PHP branch has its own minimum patch version listed above.
+- Rename the constructor and URL-builder named argument `apiVersion` to `basePath`, and replace
+  `MISTRAL_API_VERSION` with `MISTRAL_API_BASE_PATH`. Leave the latter empty to select versions per endpoint.
+  The old `API_VERSION` constant is removed; use `MistralAIURLBuilder::BASE_PATH` for the default path.
+- `listVoices()` now uses the cursor-paginated `/v2/audio/voices` route. Use the documented `page_size` and
+  `page_token` parameters instead of offset pagination.
+- Replace `listAgents()` with `listAgentPages()`, `updateLibrary()` with `patchLibrary()`, and
+  `updateLibraryDocument()` with `patchLibraryDocument()`.
+- Replace deprecated `createAgentsCompletion()` calls with Conversations operations such as `startConversation()`.
+  Adapt the request and response payloads; this is not a drop-in alias.
+- Replace the scope-specific connector credential create/update/delete helpers with `createConnectorCredentials()`,
+  `updateConnectorCredentials()`, and `deleteConnectorCredentials()`, passing `consumer_scope` as a path parameter.
+- Old observability campaign and chat-completion-event operations are removed. Use the current evaluations,
+  pipelines, spans, traces, logs, and dataset-import endpoints for new integrations.
+- Deprecated direct connector tool calls, workflow-registration execution, and group provisioning helpers are removed.
+  Use current workflow execution and group/workspace assignment operations where applicable.
+
+See [CHANGELOG.md](CHANGELOG.md) for the breaking-change summary. Explicit parameter/body pairs remain supported
+for query/body separation; private-helper compatibility fallbacks and legacy aliases are not retained.
+
+## Development
+
+```bash
+composer update
+composer test
+composer analyse
+vendor/bin/php-cs-fixer fix --dry-run --diff
+```
+
+CI also audits dependencies, validates the optional contract example, and requires 100% statement, method,
+and element coverage.
 
 ## Changelog
 

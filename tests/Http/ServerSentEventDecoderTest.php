@@ -25,9 +25,8 @@ use PHPUnit\Framework\TestCase;
 use SoftCreatR\MistralAI\Exception\MistralAIException;
 use SoftCreatR\MistralAI\Http\ServerSentEventDecoder;
 
-/**
- * @covers \SoftCreatR\MistralAI\Http\ServerSentEventDecoder
- */
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Http\ServerSentEventDecoder::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Exception\MistralAIException::class)]
 final class ServerSentEventDecoderTest extends TestCase
 {
     /**

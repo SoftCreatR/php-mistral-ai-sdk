@@ -3,86 +3,109 @@ name: Create Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the v prefix (for example, 5.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: create-release
+  cancel-in-progress: false
 
 jobs:
-  test:
-    if: startsWith(github.event.head_commit.message, '[Release]')
+  prepare:
+    name: Validate release metadata
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[Release] ')
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.release.outputs.version }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          php-version: ${{ matrix.php }}
-          coverage: none
-          extensions: json
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-interaction
+      - name: Validate release metadata
+        id: release
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            first_line="${COMMIT_MESSAGE%%$'\n'*}"
+            if [[ ! "$first_line" =~ ^\[Release\][[:space:]]+v?(.+)$ ]]; then
+              echo "Release commits must use the subject '[Release] x.y.z'." >&2
+              exit 1
+            fi
 
-      - name: Check PHP syntax
-        run: find src tests examples -type f -name '*.php' -exec php -l {} \;
+            VERSION="${BASH_REMATCH[1]}"
+          elif [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Releases must be dispatched from the main branch." >&2
+            exit 1
+          fi
 
-      - name: Run tests
-        run: composer test
+          version="${VERSION#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION" >&2
+            exit 1
+          fi
 
-  quality:
-    if: startsWith(github.event.head_commit.message, '[Release]')
-    runs-on: ubuntu-latest
+          escaped_version="${version//./\\.}"
+          if ! grep -Eq "^## (\\[$escaped_version\\]|$escaped_version)( - [0-9]{4}-[0-9]{2}-[0-9]{2})?$" CHANGELOG.md; then
+            echo "CHANGELOG.md has no release heading for $version." >&2
+            exit 1
+          fi
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
+          if git rev-parse --verify --quiet "refs/tags/v$version" >/dev/null; then
+            echo "Tag v$version already exists." >&2
+            exit 1
+          fi
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          coverage: none
-          extensions: json
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-interaction
-
-      - name: Check coding style
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff
-
-      - name: Run static analysis
-        run: composer analyse
-
-      - name: Audit dependencies
-        run: composer audit --locked
+  validate:
+    name: Validate release
+    needs: prepare
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
 
   create-release:
-    needs: [test, quality]
+    name: Create release
+    needs: [prepare, validate]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          php-version: '8.4'
-          coverage: none
+          fetch-depth: 0
 
-      - name: Read package version
-        id: version
-        run: echo "version=$(composer config version --quiet)" >> "$GITHUB_OUTPUT"
+      - name: Refuse an existing tag
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          if git rev-parse --verify --quiet "refs/tags/v$VERSION" >/dev/null; then
+            echo "Tag v$VERSION already exists." >&2
+            exit 1
+          fi
 
-      - name: Create release
-        uses: softprops/action-gh-release@v3
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.prepare.outputs.version }}
+          name: Release v${{ needs.prepare.outputs.version }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          make_latest: true

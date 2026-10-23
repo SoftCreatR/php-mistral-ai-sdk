@@ -25,9 +25,7 @@ use SoftCreatR\MistralAI\Exception\MistralAIException;
 
 use const JSON_THROW_ON_ERROR;
 
-/**
- * @covers \SoftCreatR\MistralAI\Exception\MistralAIException
- */
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Exception\MistralAIException::class)]
 final class MistralAIExceptionTest extends TestCase
 {
     /**

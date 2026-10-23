@@ -16,9 +16,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once \dirname(__DIR__) . '/MistralAIFactory.php';
+require_once \dirname(__DIR__, 1) . '/MistralAIFactory.php';
 
-// GET /v1/audio/voices
+// GET /v2/audio/voices
 MistralAIFactory::request(
     'listVoices',
+    [],
+    [],
 );

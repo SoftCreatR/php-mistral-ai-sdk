@@ -27,7 +27,7 @@ MistralAIFactory::request(
     [
         'definition' => [
             'description' => 'Solve basic arithmetic problems.',
-            'body' => '# Basic Math\n\nUse exact arithmetic and verify the result.',
+            'body' => MistralAIFactory::textFixture('skills/basic-math/SKILL.md'),
         ],
     ],
 );

@@ -25,6 +25,6 @@ MistralAIFactory::request(
     [
         'model' => 'codestral-latest',
         'prompt' => 'def fibonacci(n):',
-        'suffix' => '\n    return result',
+        'suffix' => "\n    return result",
     ],
 );

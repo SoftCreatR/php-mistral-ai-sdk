@@ -29,8 +29,6 @@ class MistralAIURLBuilder
 {
     public const ORIGIN = 'api.mistral.ai';
 
-    public const API_VERSION = 'v1';
-
     public const BASE_PATH = '/v1';
 
     private const HTTP_METHOD_DELETE = 'DELETE';
@@ -60,6 +58,60 @@ class MistralAIURLBuilder
      */
     private static array $urlEndpoints = [
 
+        // Current API additions
+        'createClientSession' => ['method' => self::HTTP_METHOD_POST, 'path' => '/client/sessions', 'category' => 'realtime', 'body' => 'json'],
+        'createServiceAccount' => ['method' => self::HTTP_METHOD_POST, 'path' => '/service-accounts', 'category' => 'service-accounts', 'body' => 'json'],
+        'listServiceAccounts' => ['method' => self::HTTP_METHOD_GET, 'path' => '/service-accounts', 'category' => 'service-accounts', 'body' => 'none'],
+        'listAssignableServiceAccountRoles' => ['method' => self::HTTP_METHOD_GET, 'path' => '/service-accounts/assignable-roles', 'category' => 'service-accounts', 'body' => 'none'],
+        'retrieveServiceAccount' => ['method' => self::HTTP_METHOD_GET, 'path' => '/service-accounts/{service_account_id}', 'category' => 'service-accounts', 'body' => 'none'],
+        'updateServiceAccount' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/service-accounts/{service_account_id}', 'category' => 'service-accounts', 'body' => 'json'],
+        'deleteServiceAccount' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/service-accounts/{service_account_id}', 'category' => 'service-accounts', 'body' => 'none'],
+        'setServiceAccountRoles' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/service-accounts/{service_account_id}/roles', 'category' => 'service-accounts', 'body' => 'json'],
+        'listServiceAccountRoles' => ['method' => self::HTTP_METHOD_GET, 'path' => '/service-accounts/{service_account_id}/roles', 'category' => 'service-accounts', 'body' => 'none'],
+        'postDatasetRecordsFromSpans' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-spans', 'category' => 'observability/datasets', 'body' => 'json'],
+        'createPipeline' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/pipelines', 'category' => 'observability/pipelines', 'body' => 'json'],
+        'listPipelines' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/pipelines', 'category' => 'observability/pipelines', 'body' => 'none'],
+        'retrievePipeline' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/pipelines/{pipeline_id}', 'category' => 'observability/pipelines', 'body' => 'none'],
+        'updatePipeline' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/observability/pipelines/{pipeline_id}', 'category' => 'observability/pipelines', 'body' => 'json'],
+        'deletePipeline' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/observability/pipelines/{pipeline_id}', 'category' => 'observability/pipelines', 'body' => 'none'],
+        'aggregateSpanEvaluations' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/spans/evaluations/aggregate', 'category' => 'observability/spans', 'body' => 'json'],
+        'searchPipelineResults' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/pipeline-results/search', 'category' => 'observability/spans', 'body' => 'json'],
+        'listObservabilityProjects' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/projects', 'category' => 'observability/projects', 'body' => 'none'],
+        'retrieveObservabilityProject' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/projects/{project_slug}', 'category' => 'observability/projects', 'body' => 'none'],
+        'listProjectEvaluations' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/projects/{project_slug}/evaluations_v2', 'category' => 'observability/evaluations', 'body' => 'none'],
+        'retrieveEvaluation' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/evaluations_v2/{evaluation_slug}', 'category' => 'observability/evaluations', 'body' => 'none'],
+        'searchEvaluationRuns' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/evaluations_v2/{evaluation_slug}/runs/search', 'category' => 'observability/evaluations/runs', 'body' => 'json'],
+        'searchAllEvaluationRuns' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/evaluation-runs_v2/search', 'category' => 'observability/evaluations/runs', 'body' => 'json'],
+        'retrieveEvaluationRun' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/evaluation-runs_v2/{run_id}', 'category' => 'observability/evaluations/runs', 'body' => 'none'],
+        'getEvaluationRunStatistics' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/evaluation-runs_v2/{run_id}/statistics', 'category' => 'observability/evaluations/runs', 'body' => 'none'],
+        'computeEvaluationRunStatistics' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/evaluation-runs_v2/{run_id}/statistics/compute', 'category' => 'observability/evaluations/runs', 'body' => 'json'],
+        'retrieveEvaluationRunRecord' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/evaluation-runs_v2/{run_id}/records/{record_id}', 'category' => 'observability/evaluations/records', 'body' => 'none'],
+        'searchEvaluationRunRecords' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/evaluation-runs_v2/{run_id}/records/search', 'category' => 'observability/evaluations/records', 'body' => 'json'],
+        'listOptimizations' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/optimizations', 'category' => 'observability/evaluations/optimizations', 'body' => 'none'],
+        'retrieveOptimization' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/optimizations/{optimization_id}', 'category' => 'observability/evaluations/optimizations', 'body' => 'none'],
+        'listOptimizationTrials' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/optimizations/{optimization_id}/trials', 'category' => 'observability/evaluations/optimizations', 'body' => 'none'],
+        'shareConnectorWithOrganization' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/connectors/{connector_id}/organization/share', 'category' => 'connectors', 'body' => 'none'],
+        'unshareConnectorFromOrganization' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id}/organization/share', 'category' => 'connectors', 'body' => 'none'],
+        'createConnectorCredentials' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id_or_name}/{consumer_scope}/credentials', 'category' => 'connectors', 'body' => 'json'],
+        'updateConnectorCredentials' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/connectors/{connector_id_or_name}/{consumer_scope}/credentials', 'category' => 'connectors', 'body' => 'json'],
+        'deleteConnectorCredentials' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id_or_name}/{consumer_scope}/credentials/{credentials_name}', 'category' => 'connectors', 'body' => 'none'],
+        'listVoices' => ['method' => self::HTTP_METHOD_GET, 'path' => '/audio/voices', 'category' => 'audio', 'body' => 'none', 'basePath' => '/v2'],
+        'unhardenDeployment' => ['method' => self::HTTP_METHOD_POST, 'path' => '/workflows/deployments/{deployment_id}/unharden', 'category' => 'workflows/deployments', 'body' => 'none'],
+        'createManagedIndex' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'listManagedIndexes' => ['method' => self::HTTP_METHOD_GET, 'path' => '/rag/managed_indexes', 'category' => 'rag/managed-indexes', 'body' => 'none'],
+        'retrieveManagedIndex' => ['method' => self::HTTP_METHOD_GET, 'path' => '/rag/managed_indexes/{index_name}', 'category' => 'rag/managed-indexes', 'body' => 'none'],
+        'updateManagedIndex' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/rag/managed_indexes/{index_name}', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'deleteManagedIndex' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/rag/managed_indexes/{index_name}', 'category' => 'rag/managed-indexes', 'body' => 'none'],
+        'ingestManagedIndexDocuments' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes/{index_name}/documents', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'deleteManagedIndexDocuments' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/rag/managed_indexes/{index_name}/documents', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'searchManagedIndex' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes/{index_name}/search', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'navigateManagedIndex' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes/{index_name}/navigate', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'readManagedIndex' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes/{index_name}/read', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'grepManagedIndex' => ['method' => self::HTTP_METHOD_POST, 'path' => '/rag/managed_indexes/{index_name}/grep', 'category' => 'rag/managed-indexes', 'body' => 'json'],
+        'retrieveManagedIndexChunk' => ['method' => self::HTTP_METHOD_GET, 'path' => '/rag/managed_indexes/{index_name}/chunks/{chunk_id}', 'category' => 'rag/managed-indexes', 'body' => 'none'],
+        'getWhoAmI' => ['method' => self::HTTP_METHOD_GET, 'path' => '/whoami', 'category' => 'users', 'body' => 'none'],
+
+    ] + [
         // Prompts
         'listPrompts' => ['method' => self::HTTP_METHOD_GET, 'path' => '/prompts', 'category' => 'prompts', 'body' => 'none', 'basePath' => '/v2'],
         'createPrompt' => ['method' => self::HTTP_METHOD_POST, 'path' => '/prompts', 'category' => 'prompts', 'body' => 'json', 'basePath' => '/v2'],
@@ -102,7 +154,6 @@ class MistralAIURLBuilder
 
         // Agents
         'createAgent' => ['method' => self::HTTP_METHOD_POST, 'path' => '/agents', 'category' => 'agents', 'body' => 'json'],
-        'listAgents' => ['method' => self::HTTP_METHOD_GET, 'path' => '/agents', 'category' => 'agents', 'body' => 'none'],
         'listAgentPages' => ['method' => self::HTTP_METHOD_GET, 'path' => '/agents/pages', 'category' => 'agents', 'body' => 'none'],
         'retrieveAgent' => ['method' => self::HTTP_METHOD_GET, 'path' => '/agents/{agent_id}', 'category' => 'agents', 'body' => 'none'],
         'updateAgent' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/agents/{agent_id}', 'category' => 'agents', 'body' => 'json'],
@@ -145,9 +196,6 @@ class MistralAIURLBuilder
         // Fim
         'createFimCompletion' => ['method' => self::HTTP_METHOD_POST, 'path' => '/fim/completions', 'category' => 'fim', 'body' => 'json'],
 
-        // Agents
-        'createAgentsCompletion' => ['method' => self::HTTP_METHOD_POST, 'path' => '/agents/completions', 'category' => 'agents', 'body' => 'json'],
-
         // Embeddings
         'createEmbedding' => ['method' => self::HTTP_METHOD_POST, 'path' => '/embeddings', 'category' => 'embeddings', 'body' => 'json'],
 
@@ -172,14 +220,12 @@ class MistralAIURLBuilder
         'retrieveLibrary' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}', 'category' => 'libraries', 'body' => 'none'],
         'deleteLibrary' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}', 'category' => 'libraries', 'body' => 'none'],
         'patchLibrary' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/libraries/{library_id}', 'category' => 'libraries', 'body' => 'json'],
-        'updateLibrary' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/libraries/{library_id}', 'category' => 'libraries', 'body' => 'json'],
 
         // Libraries / Documents
         'listLibraryDocuments' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents', 'category' => 'libraries/documents', 'body' => 'none'],
         'uploadLibraryDocument' => ['method' => self::HTTP_METHOD_POST, 'path' => '/libraries/{library_id}/documents', 'category' => 'libraries/documents', 'body' => 'multipart', 'fileFields' => ['file']],
         'retrieveLibraryDocument' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}', 'category' => 'libraries/documents', 'body' => 'none'],
         'patchLibraryDocument' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/libraries/{library_id}/documents/{document_id}', 'category' => 'libraries/documents', 'body' => 'json'],
-        'updateLibraryDocument' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/libraries/{library_id}/documents/{document_id}', 'category' => 'libraries/documents', 'body' => 'json'],
         'deleteLibraryDocument' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}/documents/{document_id}', 'category' => 'libraries/documents', 'body' => 'none'],
         'retrieveLibraryDocumentTextContent' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/text_content', 'category' => 'libraries/documents', 'body' => 'none'],
         'retrieveLibraryDocumentStatus' => ['method' => self::HTTP_METHOD_GET, 'path' => '/libraries/{library_id}/documents/{document_id}/status', 'category' => 'libraries/documents', 'body' => 'none'],
@@ -193,18 +239,10 @@ class MistralAIURLBuilder
         'deleteLibraryShare' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/libraries/{library_id}/share', 'category' => 'libraries/shares', 'body' => 'json'],
 
         // Observability / Chat-Completion-Events
-        'getChatCompletionEvents' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/chat-completion-events/search', 'category' => 'observability/chat-completion-events', 'body' => 'json'],
-        'getChatCompletionEventIds' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/chat-completion-events/search-ids', 'category' => 'observability/chat-completion-events', 'body' => 'json'],
-        'getChatCompletionEvent' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/chat-completion-events/{event_id}', 'category' => 'observability/chat-completion-events', 'body' => 'none'],
-        'getSimilarChatCompletionEvents' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/chat-completion-events/{event_id}/similar-events', 'category' => 'observability/chat-completion-events', 'body' => 'none'],
 
         // Observability / Chat-Completion-Events / Fields
-        'getChatCompletionFields' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/chat-completion-fields', 'category' => 'observability/chat-completion-events/fields', 'body' => 'none'],
-        'getChatCompletionFieldOptions' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/chat-completion-fields/{field_name}/options', 'category' => 'observability/chat-completion-events/fields', 'body' => 'none'],
-        'getChatCompletionFieldOptionsCounts' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/chat-completion-fields/{field_name}/options-counts', 'category' => 'observability/chat-completion-events/fields', 'body' => 'json'],
 
         // Observability / Chat-Completion-Events
-        'judgeChatCompletionEvent' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/chat-completion-events/{event_id}/live-judging', 'category' => 'observability/chat-completion-events', 'body' => 'json'],
 
         // Observability / Judges
         'createJudge' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/judges', 'category' => 'observability/judges', 'body' => 'json'],
@@ -215,12 +253,6 @@ class MistralAIURLBuilder
         'judgeConversation' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/judges/{judge_id}/live-judging', 'category' => 'observability/judges', 'body' => 'json'],
 
         // Observability / Campaigns
-        'createCampaign' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/campaigns', 'category' => 'observability/campaigns', 'body' => 'json'],
-        'getCampaigns' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/campaigns', 'category' => 'observability/campaigns', 'body' => 'none'],
-        'getCampaignById' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/campaigns/{campaign_id}', 'category' => 'observability/campaigns', 'body' => 'none'],
-        'deleteCampaign' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/observability/campaigns/{campaign_id}', 'category' => 'observability/campaigns', 'body' => 'none'],
-        'getCampaignStatusById' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/campaigns/{campaign_id}/status', 'category' => 'observability/campaigns', 'body' => 'none'],
-        'getCampaignSelectedEvents' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/campaigns/{campaign_id}/selected-events', 'category' => 'observability/campaigns', 'body' => 'none'],
 
         // Observability / Datasets
         'createDataset' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets', 'category' => 'observability/datasets', 'body' => 'json'],
@@ -230,8 +262,6 @@ class MistralAIURLBuilder
         'updateDataset' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/observability/datasets/{dataset_id}', 'category' => 'observability/datasets', 'body' => 'json'],
         'getDatasetRecords' => ['method' => self::HTTP_METHOD_GET, 'path' => '/observability/datasets/{dataset_id}/records', 'category' => 'observability/datasets', 'body' => 'none'],
         'createDatasetRecord' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/records', 'category' => 'observability/datasets', 'body' => 'json'],
-        'postDatasetRecordsFromCampaign' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-campaign', 'category' => 'observability/datasets', 'body' => 'json'],
-        'postDatasetRecordsFromExplorer' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-explorer', 'category' => 'observability/datasets', 'body' => 'json'],
         'postDatasetRecordsFromFile' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-file', 'category' => 'observability/datasets', 'body' => 'json'],
         'postDatasetRecordsFromPlayground' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-playground', 'category' => 'observability/datasets', 'body' => 'json'],
         'postDatasetRecordsFromDataset' => ['method' => self::HTTP_METHOD_POST, 'path' => '/observability/datasets/{dataset_id}/imports/from-dataset', 'category' => 'observability/datasets', 'body' => 'json'],
@@ -293,25 +323,17 @@ class MistralAIURLBuilder
         'unshareConnector' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id}/share', 'category' => 'connectors', 'body' => 'none'],
         'activateForConsumerConnector' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id}/{consumer_scope}/activate', 'category' => 'connectors', 'body' => 'none'],
         'deactivateForConsumerConnector' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id}/{consumer_scope}/deactivate', 'category' => 'connectors', 'body' => 'none'],
-        'callConnectorTool' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id_or_name}/tools/{tool_name}/call', 'category' => 'connectors', 'body' => 'json'],
         'listConnectorTools' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}/tools', 'category' => 'connectors', 'body' => 'none'],
         'getConnectorAuthenticationMethods' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}/authentication_methods', 'category' => 'connectors', 'body' => 'none'],
         'listConnectorOrganizationCredentials' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}/organization/credentials', 'category' => 'connectors', 'body' => 'none'],
-        'createOrUpdateConnectorOrganizationCredentials' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id_or_name}/organization/credentials', 'category' => 'connectors', 'body' => 'json'],
         'listConnectorWorkspaceCredentials' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}/workspace/credentials', 'category' => 'connectors', 'body' => 'none'],
-        'createOrUpdateConnectorWorkspaceCredentials' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id_or_name}/workspace/credentials', 'category' => 'connectors', 'body' => 'json'],
         'listConnectorUserCredentials' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}/user/credentials', 'category' => 'connectors', 'body' => 'none'],
-        'createOrUpdateConnectorUserCredentials' => ['method' => self::HTTP_METHOD_POST, 'path' => '/connectors/{connector_id_or_name}/user/credentials', 'category' => 'connectors', 'body' => 'json'],
         'deleteAllConnectorUserCredentials' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id_or_name}/user/credentials', 'category' => 'connectors', 'body' => 'none'],
-        'deleteConnectorOrganizationCredentials' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id_or_name}/organization/credentials/{credentials_name}', 'category' => 'connectors', 'body' => 'none'],
-        'deleteConnectorWorkspaceCredentials' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id_or_name}/workspace/credentials/{credentials_name}', 'category' => 'connectors', 'body' => 'none'],
-        'deleteConnectorUserCredentials' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id_or_name}/user/credentials/{credentials_name}', 'category' => 'connectors', 'body' => 'none'],
         'retrieveConnector' => ['method' => self::HTTP_METHOD_GET, 'path' => '/connectors/{connector_id_or_name}', 'category' => 'connectors', 'body' => 'none'],
         'updateConnector' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/connectors/{connector_id}', 'category' => 'connectors', 'body' => 'json'],
         'deleteConnector' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/connectors/{connector_id}', 'category' => 'connectors', 'body' => 'none'],
 
         // Audio
-        'listVoices' => ['method' => self::HTTP_METHOD_GET, 'path' => '/audio/voices', 'category' => 'audio', 'body' => 'none'],
         'createVoice' => ['method' => self::HTTP_METHOD_POST, 'path' => '/audio/voices', 'category' => 'audio', 'body' => 'json'],
         'deleteVoice' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/audio/voices/{voice_id}', 'category' => 'audio', 'body' => 'none'],
         'updateVoice' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/audio/voices/{voice_id}', 'category' => 'audio', 'body' => 'json'],
@@ -376,7 +398,6 @@ class MistralAIURLBuilder
         'getWorkflows' => ['method' => self::HTTP_METHOD_GET, 'path' => '/workflows', 'category' => 'workflows', 'body' => 'none'],
         'getWorkflowRegistrations' => ['method' => self::HTTP_METHOD_GET, 'path' => '/workflows/registrations', 'category' => 'workflows', 'body' => 'none'],
         'executeWorkflow' => ['method' => self::HTTP_METHOD_POST, 'path' => '/workflows/{workflow_identifier}/execute', 'category' => 'workflows', 'body' => 'json'],
-        'executeWorkflowRegistration' => ['method' => self::HTTP_METHOD_POST, 'path' => '/workflows/registrations/{workflow_registration_id}/execute', 'category' => 'workflows', 'body' => 'json'],
         'getWorkflow' => ['method' => self::HTTP_METHOD_GET, 'path' => '/workflows/{workflow_identifier}', 'category' => 'workflows', 'body' => 'none'],
         'updateWorkflow' => ['method' => self::HTTP_METHOD_PUT, 'path' => '/workflows/{workflow_identifier}', 'category' => 'workflows', 'body' => 'json'],
         'getWorkflowRegistration' => ['method' => self::HTTP_METHOD_GET, 'path' => '/workflows/registrations/{workflow_registration_id}', 'category' => 'workflows', 'body' => 'none'],
@@ -418,6 +439,10 @@ class MistralAIURLBuilder
      * }>
      */
     private static array $adminEndpoints = [
+
+        // Current API additions
+        'queryAdminUsage' => ['method' => self::HTTP_METHOD_POST, 'path' => '/admin/usage/query', 'category' => 'administration/billing', 'body' => 'json', 'admin' => true],
+        'deactivateAdminUser' => ['method' => self::HTTP_METHOD_POST, 'path' => '/admin/users/{user_id}/deactivate', 'category' => 'administration/users', 'body' => 'none', 'admin' => true],
         // Administration / Users
         'listAdminUsers' => ['method' => self::HTTP_METHOD_GET, 'path' => '/admin/users', 'category' => 'administration/users', 'body' => 'none', 'admin' => true],
         'createAdminUsers' => ['method' => self::HTTP_METHOD_POST, 'path' => '/admin/users', 'category' => 'administration/users', 'body' => 'json', 'admin' => true],
@@ -450,7 +475,6 @@ class MistralAIURLBuilder
         // Administration / User-Groups
         'listAdminUserGroups' => ['method' => self::HTTP_METHOD_GET, 'path' => '/admin/user-groups', 'category' => 'administration/user-groups', 'body' => 'none', 'admin' => true],
         'createAdminUserGroup' => ['method' => self::HTTP_METHOD_POST, 'path' => '/admin/user-groups', 'category' => 'administration/user-groups', 'body' => 'json', 'admin' => true],
-        'provisionAdminGroupToWorkspace' => ['method' => self::HTTP_METHOD_POST, 'path' => '/admin/user-groups/provision-workspace', 'category' => 'administration/user-groups', 'body' => 'json', 'admin' => true],
         'retrieveAdminUserGroup' => ['method' => self::HTTP_METHOD_GET, 'path' => '/admin/user-groups/{group_uuid}', 'category' => 'administration/user-groups', 'body' => 'none', 'admin' => true],
         'updateAdminUserGroup' => ['method' => self::HTTP_METHOD_PATCH, 'path' => '/admin/user-groups/{group_uuid}', 'category' => 'administration/user-groups', 'body' => 'json', 'admin' => true],
         'deleteAdminUserGroup' => ['method' => self::HTTP_METHOD_DELETE, 'path' => '/admin/user-groups/{group_uuid}', 'category' => 'administration/user-groups', 'body' => 'none', 'admin' => true],
@@ -549,7 +573,7 @@ class MistralAIURLBuilder
         string $key,
         array $parameters = [],
         string $origin = '',
-        string $apiVersion = '',
+        string $basePath = '',
     ): UriInterface {
         $endpoint = self::getEndpoint($key);
         $endpointPath = self::replacePathParameters($endpoint['path'], $parameters);
@@ -566,8 +590,8 @@ class MistralAIURLBuilder
             $originBasePath = '';
         }
 
-        if ($apiVersion !== '') {
-            $resolvedBasePath = '/' . \trim($apiVersion, '/');
+        if ($basePath !== '') {
+            $resolvedBasePath = '/' . \trim($basePath, '/');
         } elseif ($isAbsoluteOrigin && $originBasePath !== '') {
             $resolvedBasePath = $originBasePath;
         } else {

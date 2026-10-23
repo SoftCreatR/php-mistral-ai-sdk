@@ -3,11 +3,9 @@
   "description": "A PSR-17/PSR-18 compatible PHP SDK for the Mistral AI API.",
   "license": "ISC",
   "type": "library",
-  "version": "4.0.0",
   "keywords": [
     "mistral",
     "ai",
-    "llama",
     "artificial-intelligence",
     "machine-learning",
     "natural-language-processing",
@@ -23,18 +21,21 @@
     }
   ],
   "require": {
-    "php": ">=8.1",
+    "php": "~8.2.35 || ~8.3.36 || ~8.4.27 || ~8.5.12 || ~8.6.0",
     "ext-json": "*",
     "psr/http-client": "^1.0",
     "psr/http-factory": "^1.0",
     "psr/http-message": "^1.1 || ^2.0"
   },
   "require-dev": {
-    "friendsofphp/php-cs-fixer": "^3.95.25",
+    "friendsofphp/php-cs-fixer": "^3.95.27",
     "guzzlehttp/guzzle": "^7.15.5 || ^8.2.0",
-    "phpstan/phpstan": "^2.2.13",
-    "phpunit/phpunit": "^10.5.64 || ^11.5.56 || ^12.5.35 || ^13.3.3",
+    "phpstan/phpstan": "^2.3.0",
+    "phpunit/phpunit": "^10.5.66 || ^11.5.57 || ^12.5.38 || ^13.4.1",
     "vlucas/phpdotenv": "^5.7.0"
+  },
+  "suggest": {
+    "softcreatr/json-payload-contract": "Optional JSON response validation and DTO mapping (PHP 8.3 or newer)."
   },
   "minimum-stability": "stable",
   "prefer-stable": true,

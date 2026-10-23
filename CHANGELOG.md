@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-10-23
+
+### Added
+
+- Added current endpoints for realtime client sessions, service accounts, observability projects and evaluations,
+  pipelines, optimization trials, span-based dataset imports, managed RAG indexes, organization connector sharing,
+  workflow deployment lifecycle operations, identity, and administrative usage queries and user deactivation.
+- Added grouped PHP examples for the new methods and a route fixture based on the current public OpenAPI document.
+- Added optional `ResponseContract`, `JsonResponse`, and `ChatCompletionResponse` helpers for raw JSON snapshots,
+  HTTP metadata, typed common completion fields, text aggregation, finish reasons, and application-owned mappers.
+- Added an optional JSONPayloadContract example and fixture. It remains a suggested dependency requiring PHP 8.3;
+  it is not needed for the SDK's response wrappers.
+
+### Changed
+
+- Required PHP 8.2.35+, 8.3.36+, 8.4.27+, 8.5.12+, or 8.6.x, enforcing the minimum patch version for each branch.
+- Used PHP 8.2 readonly classes for response wrappers and the multipart builder, and literal types in test helpers.
+- Moved `listVoices()` to the current cursor-paginated `/v2/audio/voices` route.
+- Renamed the `apiVersion` constructor and URL-builder argument to `basePath`, and the example setting
+  `MISTRAL_API_VERSION` to `MISTRAL_API_BASE_PATH`. An empty override preserves per-endpoint version selection.
+- Updated Composer dependencies, README, method catalog, examples, environment variables, and migration guidance.
+- Updated audio examples for the current Voxtral transcription models, used the local PDF fixture for OCR, and
+  added a real Markdown fixture for JSON-based Skills definitions.
+- Aligned validation and release workflows: PHP 8.2.35 lowest dependencies, PHP 8.5 latest dependencies,
+  experimental PHP 8.6, dependency auditing, static analysis, formatting, and enforced 100% coverage.
+- Releases derive their version from `[Release] x.y.z` commits or a validated manual dispatch instead of a static
+  Composer version field. Push-based publishing remains supported.
+- Replaced deprecated PHPUnit exception assertions and coverage annotations with current assertions and attributes.
+
+### Removed
+
+- Dropped PHP 8.1 support and support for older patch releases in the PHP 8.2 through 8.5 branches.
+- Removed old observability campaign, chat-completion-event, field-discovery, and campaign/explorer dataset-import
+  methods that are no longer in the public reference. Use the current evaluations and telemetry APIs instead.
+- Removed the old scope-specific connector credential create/update/delete helpers. Use the current generic helpers
+  with `consumer_scope` and distinguish POST creation from PATCH updates.
+- Removed deprecated `listAgents`, `updateLibrary`, `updateLibraryDocument`, `callConnectorTool`,
+  `executeWorkflowRegistration`, and `provisionAdminGroupToWorkspace` helpers and their examples.
+- Removed deprecated `createAgentsCompletion` and its streaming example. Use the current Conversations API instead.
+- Removed the `API_VERSION` constant and private-helper compatibility fallbacks for omitted endpoint metadata,
+  inferred body types, and boolean content types. Existing `@throws` contracts are retained.
+
+These changes include compatibility breaks. See the README migration notes before upgrading.
+
 ## [4.0.0] - 2026-09-12
 
 ### Added

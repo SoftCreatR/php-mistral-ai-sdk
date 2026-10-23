@@ -26,7 +26,7 @@ MistralAIFactory::request(
         'model' => 'mistral-ocr-latest',
         'document' => [
             'type' => 'document_url',
-            'document_url' => 'https://arxiv.org/pdf/2201.04234',
+            'document_url' => 'data:application/pdf;base64,' . MistralAIFactory::base64Fixture('document.pdf'),
         ],
     ],
 );

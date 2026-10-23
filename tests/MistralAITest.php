@@ -33,11 +33,11 @@ use SoftCreatR\MistralAI\Http\StreamingClientInterface;
 use SoftCreatR\MistralAI\MistralAI;
 use Throwable;
 
-/**
- * @covers \SoftCreatR\MistralAI\Exception\MistralAIException
- * @covers \SoftCreatR\MistralAI\MistralAI
- * @covers \SoftCreatR\MistralAI\MistralAIURLBuilder
- */
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Exception\MistralAIException::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\MistralAI::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\MistralAIURLBuilder::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Http\MultipartBodyBuilder::class)]
+#[\PHPUnit\Framework\Attributes\CoversClass(\SoftCreatR\MistralAI\Http\ServerSentEventDecoder::class)]
 final class MistralAITest extends TestCase
 {
     /**
@@ -93,7 +93,7 @@ final class MistralAITest extends TestCase
     public function testInvalidFirstArgumentInCall(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('First argument must be an array of parameters.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('First argument must be an array of parameters.', '/') . '/');
 
         $this->mistralAI->__call('createChatCompletion', ['invalid_argument']);
     }
@@ -128,6 +128,27 @@ final class MistralAITest extends TestCase
     }
 
     /**
+     * @throws MistralAIException
+     * @throws Throwable
+     */
+    public function testDeleteEndpointCanCarryADeclaredJsonBody(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request): Response {
+            $this->assertSame('DELETE', $request->getMethod());
+            $this->assertStringEndsWith('/rag/managed_indexes/test%2Findex/documents', $request->getUri()->getPath());
+            $this->assertSame('application/json', $request->getHeaderLine('Content-Type'));
+            $this->assertSame('{"document_ids":["doc-1"]}', (string) $request->getBody());
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->deleteManagedIndexDocuments([
+            'index_name' => 'test/index',
+            'document_ids' => ['doc-1'],
+        ]);
+    }
+
+    /**
      * Tests that an MistralAIException is thrown when the API returns an error response.
      */
     public function testCallAPIHandlesErrorResponse(): void
@@ -137,7 +158,7 @@ final class MistralAITest extends TestCase
         });
 
         $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessage('Bad Request');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Bad Request', '/') . '/');
 
         // Pass options as the second argument
         $this->mistralAI->createChatCompletion([], [
@@ -161,7 +182,7 @@ final class MistralAITest extends TestCase
         );
 
         $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessage('Client error');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Client error', '/') . '/');
 
         // Pass options as the second argument
         $this->mistralAI->createChatCompletion([], [
@@ -185,7 +206,7 @@ final class MistralAITest extends TestCase
         });
 
         $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessage('Bad Request');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Bad Request', '/') . '/');
 
         $this->mistralAI->createChatCompletion(
             [],
@@ -286,7 +307,7 @@ final class MistralAITest extends TestCase
         );
 
         $this->expectException(MistralAIException::class);
-        $this->expectExceptionMessage('Client error in streaming');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Client error in streaming', '/') . '/');
 
         $this->mistralAI->createChatCompletion(
             [],
@@ -329,7 +350,7 @@ final class MistralAITest extends TestCase
         $reflectionMethod = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
         $boundary = 'testBoundary';
 
-        $headers = $reflectionMethod->invoke($this->mistralAI, true, $boundary);
+        $headers = $reflectionMethod->invoke($this->mistralAI, "multipart/form-data; boundary={$boundary}");
 
         $this->assertArrayHasKey('Content-Type', $headers);
         $this->assertEquals("multipart/form-data; boundary={$boundary}", $headers['Content-Type']);
@@ -640,6 +661,7 @@ final class MistralAITest extends TestCase
         [$parameters, $opts, $streamCallback] = $reflection->invoke(
             $this->mistralAI,
             [ ['foo' => 'bar'], $callback ],
+            ['method' => 'GET', 'path' => '/models', 'body' => 'none'],
         );
 
         $this->assertSame(['foo' => 'bar'], $parameters);
@@ -654,7 +676,7 @@ final class MistralAITest extends TestCase
     public function testRejectsMoreThanThreeEndpointArguments(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Endpoint calls accept at most three arguments.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Endpoint calls accept at most three arguments.', '/') . '/');
 
         $this->mistralAI->__call('listModels', [[], [], static fn() => null, []]);
     }
@@ -666,7 +688,7 @@ final class MistralAITest extends TestCase
     public function testRejectsANonArrayNonCallableSecondArgument(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Second argument must be an array or callable.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Second argument must be an array or callable.', '/') . '/');
 
         $this->mistralAI->__call('listModels', [[], 'invalid']);
     }
@@ -678,7 +700,7 @@ final class MistralAITest extends TestCase
     public function testRejectsAThirdArgumentWithoutASecondArray(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Third argument must be a stream callback.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('Third argument must be a stream callback.', '/') . '/');
 
         $this->mistralAI->__call('listModels', [[], static fn() => null, static fn() => null]);
     }
@@ -710,7 +732,7 @@ final class MistralAITest extends TestCase
     public function testRejectsInvalidCustomHeadersInTheFirstArgument(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('customHeaders must be an array.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('customHeaders must be an array.', '/') . '/');
 
         $this->mistralAI->listModels(['customHeaders' => 'invalid']);
     }
@@ -721,7 +743,7 @@ final class MistralAITest extends TestCase
     public function testRejectsInvalidCustomHeadersInTheSecondArgument(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('customHeaders must be an array.');
+        $this->expectExceptionMessageMatches('/' . \preg_quote('customHeaders must be an array.', '/') . '/');
 
         $this->mistralAI->createChatCompletion([], ['customHeaders' => 'invalid']);
     }
@@ -756,22 +778,10 @@ final class MistralAITest extends TestCase
     /**
      * @throws ReflectionException
      */
-    public function testInfersLegacyEndpointBodyTypes(): void
-    {
-        $reflection = TestHelper::getPrivateMethod($this->mistralAI, 'inferBodyType');
-
-        $this->assertSame('none', $reflection->invoke($this->mistralAI, 'GET', '/models'));
-        $this->assertSame('multipart', $reflection->invoke($this->mistralAI, 'POST', '/audio/transcriptions'));
-        $this->assertSame('json', $reflection->invoke($this->mistralAI, 'POST', '/responses'));
-    }
-
-    /**
-     * @throws ReflectionException
-     */
-    public function testCreatesLegacyJsonHeadersFromFalseMultipartFlag(): void
+    public function testCreatesJsonHeaders(): void
     {
         $reflection = TestHelper::getPrivateMethod($this->mistralAI, 'createHeaders');
-        $headers = $reflection->invoke($this->mistralAI, false);
+        $headers = $reflection->invoke($this->mistralAI, 'application/json');
 
         $this->assertIsArray($headers);
         $this->assertSame('application/json', $headers['Content-Type']);

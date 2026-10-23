@@ -25,17 +25,17 @@ use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 use Throwable;
 
-final class MultipartBodyBuilder
+final readonly class MultipartBodyBuilder
 {
     /** @var Closure(string, string): mixed */
-    private readonly Closure $resourceFactory;
+    private Closure $resourceFactory;
 
     /**
      * @param StreamFactoryInterface $streamFactory
      * @param (callable(string, string): mixed)|null $resourceFactory
      */
     public function __construct(
-        private readonly StreamFactoryInterface $streamFactory,
+        private StreamFactoryInterface $streamFactory,
         ?callable $resourceFactory = null,
     ) {
         $this->resourceFactory = $resourceFactory === null
