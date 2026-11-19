@@ -16,20 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes
+// DELETE /v1/triggers/{trigger_id}
 MistralAIFactory::request(
-    'createManagedIndex',
-    [],
+    'deleteTrigger',
     [
-        'name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-        'config' => [
-            'embedding' => [
-                'type' => 'mistral',
-                'name' => 'mistral-embed',
-                'dimensions' => 1024,
-            ],
-        ],
+        'trigger_id' => MistralAIFactory::env('MISTRAL_TRIGGER_ID'),
     ],
 );

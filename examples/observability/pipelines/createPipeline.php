@@ -31,7 +31,7 @@ MistralAIFactory::request(
         ],
         'definitions' => [
             [
-                'slug' => MistralAIFactory::env('MISTRAL_JUDGE_SLUG'),
+                'slug' => MistralAIFactory::env('MISTRAL_SCORER_SLUG'),
             ],
         ],
         'enabled' => false,

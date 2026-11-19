@@ -18,10 +18,14 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// GET /v1/admin/user-groups/{group_uuid}/nested
+// POST /v1/context/search-indexes/{index_name}/read
 MistralAIFactory::request(
-    'retrieveAdminNestedGroupsAdmin',
+    'readManagedIndex',
     [
-        'group_uuid' => MistralAIFactory::env('MISTRAL_GROUP_UUID'),
+        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+    ],
+    [
+        'source_id' => MistralAIFactory::env('MISTRAL_SOURCE_ID'),
+        'top_k' => 5,
     ],
 );

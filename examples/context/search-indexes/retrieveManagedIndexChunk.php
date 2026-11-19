@@ -18,18 +18,12 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes/{index_name}/documents
+// GET /v1/context/search-indexes/{index_name}/chunks/{chunk_id}
 MistralAIFactory::request(
-    'ingestManagedIndexDocuments',
+    'retrieveManagedIndexChunk',
     [
         'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+        'chunk_id' => MistralAIFactory::env('MISTRAL_CHUNK_ID'),
     ],
-    [
-        'documents' => [
-            [
-                'id' => 'sdk-example-document',
-                'content' => 'PHP is a programming language.',
-            ],
-        ],
-    ],
+    [],
 );

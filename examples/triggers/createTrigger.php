@@ -16,16 +16,20 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes/{index_name}/read
+// POST /v1/triggers
 MistralAIFactory::request(
-    'readManagedIndex',
+    'createTrigger',
+    [],
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-    ],
-    [
-        'source_id' => MistralAIFactory::env('MISTRAL_SOURCE_ID'),
-        'top_k' => 5,
+        'event_source_id' => MistralAIFactory::env('MISTRAL_EVENT_SOURCE_ID'),
+        'handler' => 'workflows',
+        'action' => [
+            'primitive_id' => MistralAIFactory::env('MISTRAL_WORKFLOW_ID'),
+            'type' => 'start_workflow',
+        ],
+        'owner_type' => 'workspace',
+        'title' => 'Run workflow for a Notion event',
     ],
 );

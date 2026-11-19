@@ -18,16 +18,21 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes/{index_name}/navigate
-MistralAIFactory::request(
-    'navigateManagedIndex',
+// POST /v1/context/search-indexes/{index_name}/summary_field/{language}
+$client = MistralAIFactory::create(MistralAIFactory::env('MISTRAL_API_KEY'));
+$response = $client->request(
+    'generateManagedIndexSummary',
     [
         'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-    ],
-    [
-        'source_id' => MistralAIFactory::env('MISTRAL_SOURCE_ID'),
-        'start_offset' => 0,
-        'end_offset' => 1,
-        'direction' => 'next',
+        'language' => 'en',
     ],
 );
+
+// This endpoint returns NDJSON, not server-sent events.
+if ($response !== null) {
+    $body = $response->getBody();
+
+    while (!$body->eof()) {
+        echo $body->read(8192);
+    }
+}

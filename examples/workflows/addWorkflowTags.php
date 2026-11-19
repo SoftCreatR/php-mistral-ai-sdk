@@ -16,13 +16,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-// DELETE /v1/rag/managed_indexes/{index_name}
+// POST /v1/workflows/{workflow_identifier}/tags
 MistralAIFactory::request(
-    'deleteManagedIndex',
+    'addWorkflowTags',
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+        'workflow_identifier' => MistralAIFactory::env('MISTRAL_WORKFLOW_IDENTIFIER'),
     ],
-    [],
+    [
+        'tags' => ['sdk-example'],
+    ],
 );

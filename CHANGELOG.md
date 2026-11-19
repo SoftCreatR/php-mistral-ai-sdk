@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-11-19
+
+### Added
+
+- Added Responses creation and input-token counting, audio agents and sessions, observability scorers and
+  pipeline result fields, trigger and webhook management, and Search Index summaries.
+- Added deployment archive metadata, workflow tags, public-key billing lookups, and Admin API methods for
+  user reactivation and workspace membership listing.
+- Added grouped PHP examples for the new methods. Credential-bearing examples keep token and secret values out of output.
+
+### Changed
+
+- Moved managed-index methods to `/v1/context/search-indexes` without renaming them.
+- Updated the pipeline creation example to use a scorer slug. Existing judge methods remain available.
+
+### Removed
+
+- Removed `retrieveAdminNestedGroupsAdmin()` and `setAdminNestedGroupsAdmin()` because their routes are no longer documented.
+  This is a breaking change for callers of those two methods.
+
 ## [5.0.0] - 2026-10-23
 
 ### Added

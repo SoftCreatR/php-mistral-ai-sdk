@@ -18,12 +18,19 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// GET /v1/rag/managed_indexes/{index_name}/chunks/{chunk_id}
+// PUT /v1/context/search-indexes/{index_name}
 MistralAIFactory::request(
-    'retrieveManagedIndexChunk',
+    'updateManagedIndex',
     [
         'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-        'chunk_id' => MistralAIFactory::env('MISTRAL_CHUNK_ID'),
     ],
-    [],
+    [
+        'schema' => [
+            'document_fields' => [
+                'title' => [
+                    'type' => 'text',
+                ],
+            ],
+        ],
+    ],
 );

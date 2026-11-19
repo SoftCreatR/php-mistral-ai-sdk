@@ -18,17 +18,11 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes/{index_name}/search
+// GET /v1/admin/users/{user_id}/workspaces
 MistralAIFactory::request(
-    'searchManagedIndex',
+    'listAdminUserWorkspaces',
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-    ],
-    [
-        'retriever' => [
-            'type' => 'keyword',
-            'query' => 'PHP',
-            'top_k' => 5,
-        ],
+        'user_id' => MistralAIFactory::env('MISTRAL_ADMIN_USER_ID'),
+        'page_size' => 10,
     ],
 );

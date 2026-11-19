@@ -135,7 +135,7 @@ final class MistralAITest extends TestCase
     {
         $this->sendRequestMock(function (RequestInterface $request): Response {
             $this->assertSame('DELETE', $request->getMethod());
-            $this->assertStringEndsWith('/rag/managed_indexes/test%2Findex/documents', $request->getUri()->getPath());
+            $this->assertSame('/v1/context/search-indexes/test%2Findex/documents', $request->getUri()->getPath());
             $this->assertSame('application/json', $request->getHeaderLine('Content-Type'));
             $this->assertSame('{"document_ids":["doc-1"]}', (string) $request->getBody());
 
@@ -146,6 +146,41 @@ final class MistralAITest extends TestCase
             'index_name' => 'test/index',
             'document_ids' => ['doc-1'],
         ]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testBillingUsesApiKeyHeaderInsteadOfBearerAuthentication(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request): Response {
+            $this->assertSame('GET', $request->getMethod());
+            $this->assertSame('/v1/billing/budget', $request->getUri()->getPath());
+            $this->assertSame($this->apiKey, $request->getHeaderLine('x-api-key'));
+            $this->assertFalse($request->hasHeader('Authorization'));
+
+            return new Response(200, [], '{}');
+        });
+
+        $this->mistralAI->getBudget();
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testResponsesTokenCountSendsJson(): void
+    {
+        $this->sendRequestMock(function (RequestInterface $request): Response {
+            $this->assertSame('POST', $request->getMethod());
+            $this->assertSame('/v1/responses/input_tokens', $request->getUri()->getPath());
+            $this->assertSame('Bearer ' . $this->apiKey, $request->getHeaderLine('Authorization'));
+            $this->assertSame('application/json', $request->getHeaderLine('Content-Type'));
+            $this->assertSame('{"model":"mistral-small-latest","input":"Hello"}', (string) $request->getBody());
+
+            return new Response(200, [], '{"input_tokens":4}');
+        });
+
+        $this->mistralAI->countResponseInputTokens(['model' => 'mistral-small-latest', 'input' => 'Hello']);
     }
 
     /**

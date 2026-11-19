@@ -16,17 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
+require_once \dirname(__DIR__) . '/MistralAIFactory.php';
 
-// PATCH /v1/admin/user-groups/{group_uuid}/nested
-MistralAIFactory::request(
-    'setAdminNestedGroupsAdmin',
-    [
-        'group_uuid' => MistralAIFactory::env('MISTRAL_GROUP_UUID'),
-    ],
-    [
-        'child_group_uuids' => [
-            'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        ],
-    ],
-);
+// GET /v1/billing/subscription
+MistralAIFactory::request('getSubscription');

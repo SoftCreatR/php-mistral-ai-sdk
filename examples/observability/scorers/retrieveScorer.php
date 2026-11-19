@@ -18,11 +18,10 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// GET /v1/rag/managed_indexes/{index_name}
+// GET /v1/observability/scorers/{scorer_slug}
 MistralAIFactory::request(
-    'retrieveManagedIndex',
+    'retrieveScorer',
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+        'scorer_slug' => MistralAIFactory::env('MISTRAL_SCORER_SLUG'),
     ],
-    [],
 );

@@ -68,6 +68,14 @@ echo $result['choices'][0]['message']['content'];
 
 Endpoint methods return a PSR-7 `ResponseInterface`, including calls that deliver SSE events to a callback.
 
+## Responses API
+
+Use [`createResponse()`](examples/responses/createResponse.php) for a new Responses request and
+[`countResponseInputTokens()`](examples/responses/countResponseInputTokens.php) to estimate input tokens before sending it.
+Pass `stream: true` in the request body for SSE. Keep conversation history in your application: Mistral's current
+[Responses API](https://docs.mistral.ai/api/endpoint/responses) does not support server-managed conversations or
+background processing.
+
 ## Arguments
 
 Body-only endpoints use a single body array:
@@ -219,7 +227,12 @@ Administration examples use `MISTRAL_ADMIN_API_KEY`. Resource-specific examples 
 documented in `.env.example`. Fixtures for files, audio, and OCR are under `examples/fixtures`; the optional mapper
 uses a local chat-completion fixture without making an API call. Review resource creation, uploads, cancellation,
 deletion, role assignment, and authentication examples before running them. Realtime session responses contain
-short-lived client secrets and must not be published or logged.
+short-lived client secrets and must not be published or logged. The webhook and audio-session examples that
+receive credentials do not print them.
+
+The non-admin billing methods use the regular `MISTRAL_API_KEY` in the `x-api-key` header rather than as a bearer token.
+The managed-index summary generation endpoint returns NDJSON; read the PSR-7 response body directly instead of using
+an SSE callback.
 
 Skills use JSON definitions with Markdown bodies loaded from `examples/fixtures/skills/basic-math/SKILL.md`.
 Audio examples use the current [Voxtral transcription models](https://docs.mistral.ai/studio/audio/migrate-from-voxtral-2);
@@ -236,6 +249,13 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
 | `createChatCompletion` | `POST /v1/chat/completions` | `json` | [PHP](examples/chat/createChatCompletion.php) |
+
+### Responses
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createResponse` | `POST /v1/responses` | `json` | [PHP](examples/responses/createResponse.php) |
+| `countResponseInputTokens` | `POST /v1/responses/input_tokens` | `json` | [PHP](examples/responses/countResponseInputTokens.php) |
 
 ### FIM
 
@@ -277,6 +297,27 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `updateVoice` | `PATCH /v1/audio/voices/{voice_id}` | `json` | [PHP](examples/audio/updateVoice.php) |
 | `getVoice` | `GET /v1/audio/voices/{voice_id}` | `none` | [PHP](examples/audio/getVoice.php) |
 | `getVoiceSampleAudio` | `GET /v1/audio/voices/{voice_id}/sample` | `none` | [PHP](examples/audio/getVoiceSampleAudio.php) |
+
+### Audio / Agents
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listAudioAgents` | `GET /v1/audio/agents` | `none` | [PHP](examples/audio/agents/listAudioAgents.php) |
+| `createAudioAgent` | `POST /v1/audio/agents` | `json` | [PHP](examples/audio/agents/createAudioAgent.php) |
+| `retrieveAudioAgent` | `GET /v1/audio/agents/{agent_id}` | `none` | [PHP](examples/audio/agents/retrieveAudioAgent.php) |
+| `updateAudioAgent` | `PUT /v1/audio/agents/{agent_id}` | `json` | [PHP](examples/audio/agents/updateAudioAgent.php) |
+| `deleteAudioAgent` | `DELETE /v1/audio/agents/{agent_id}` | `none` | [PHP](examples/audio/agents/deleteAudioAgent.php) |
+| `listAudioAgentVersions` | `GET /v1/audio/agents/{agent_id}/versions` | `none` | [PHP](examples/audio/agents/listAudioAgentVersions.php) |
+| `listAudioAgentSessions` | `GET /v1/audio/agents/{agent_id}/sessions` | `none` | [PHP](examples/audio/agents/listAudioAgentSessions.php) |
+
+### Audio / Sessions
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createAudioSession` | `POST /v1/audio/sessions` | `json` | [PHP](examples/audio/sessions/createAudioSession.php) |
+| `retrieveAudioSession` | `GET /v1/audio/sessions/{session_id}` | `none` | [PHP](examples/audio/sessions/retrieveAudioSession.php) |
+| `updateAudioSession` | `PATCH /v1/audio/sessions/{session_id}` | `json` | [PHP](examples/audio/sessions/updateAudioSession.php) |
+| `deleteAudioSession` | `DELETE /v1/audio/sessions/{session_id}` | `none` | [PHP](examples/audio/sessions/deleteAudioSession.php) |
 
 ### Realtime
 
@@ -448,6 +489,15 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `setServiceAccountRoles` | `PUT /v1/service-accounts/{service_account_id}/roles` | `json` | [PHP](examples/service-accounts/setServiceAccountRoles.php) |
 | `listServiceAccountRoles` | `GET /v1/service-accounts/{service_account_id}/roles` | `none` | [PHP](examples/service-accounts/listServiceAccountRoles.php) |
 
+### Observability / Scorers
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listScorers` | `GET /v1/observability/scorers` | `none` | [PHP](examples/observability/scorers/listScorers.php) |
+| `createScorer` | `POST /v1/observability/scorers` | `json` | [PHP](examples/observability/scorers/createScorer.php) |
+| `retrieveScorer` | `GET /v1/observability/scorers/{scorer_slug}` | `none` | [PHP](examples/observability/scorers/retrieveScorer.php) |
+| `updateScorer` | `PATCH /v1/observability/scorers/{scorer_slug}` | `json` | [PHP](examples/observability/scorers/updateScorer.php) |
+
 ### Observability / Datasets
 
 | SDK method | HTTP route | Request body | Example |
@@ -474,6 +524,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `createPipeline` | `POST /v1/observability/pipelines` | `json` | [PHP](examples/observability/pipelines/createPipeline.php) |
 | `listPipelines` | `GET /v1/observability/pipelines` | `none` | [PHP](examples/observability/pipelines/listPipelines.php) |
 | `retrievePipeline` | `GET /v1/observability/pipelines/{pipeline_id}` | `none` | [PHP](examples/observability/pipelines/retrievePipeline.php) |
+| `getPipelineResultFields` | `GET /v1/observability/pipelines/{pipeline_id}/results/fields` | `none` | [PHP](examples/observability/pipelines/getPipelineResultFields.php) |
 | `updatePipeline` | `PUT /v1/observability/pipelines/{pipeline_id}` | `json` | [PHP](examples/observability/pipelines/updatePipeline.php) |
 | `deletePipeline` | `DELETE /v1/observability/pipelines/{pipeline_id}` | `none` | [PHP](examples/observability/pipelines/deletePipeline.php) |
 
@@ -541,6 +592,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `updateDeployment` | `PATCH /v1/workflows/deployments/{name}` | `json` | [PHP](examples/workflows/deployments/updateDeployment.php) |
 | `deleteDeployment` | `DELETE /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/deleteDeployment.php) |
 | `getDeployment` | `GET /v1/workflows/deployments/{name}` | `none` | [PHP](examples/workflows/deployments/getDeployment.php) |
+| `getDeploymentArchive` | `GET /v1/workflows/deployments/{name}/archive` | `none` | [PHP](examples/workflows/deployments/getDeploymentArchive.php) |
 | `stopDeployment` | `POST /v1/workflows/deployments/{name}/stop` | `none` | [PHP](examples/workflows/deployments/stopDeployment.php) |
 | `startDeployment` | `POST /v1/workflows/deployments/{name}/start` | `none` | [PHP](examples/workflows/deployments/startDeployment.php) |
 | `restartDeployment` | `POST /v1/workflows/deployments/{name}/restart` | `none` | [PHP](examples/workflows/deployments/restartDeployment.php) |
@@ -548,22 +600,25 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `getDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs` | `none` | [PHP](examples/workflows/deployments/getDeploymentLogs.php) |
 | `streamDeploymentLogs` | `GET /v1/workflows/deployments/{name}/logs/stream` | `none` | [PHP](examples/workflows/deployments/streamDeploymentLogs.php) |
 
-### RAG / Managed Indexes
+### Context / Search Indexes
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
-| `createManagedIndex` | `POST /v1/rag/managed_indexes` | `json` | [PHP](examples/rag/managed-indexes/createManagedIndex.php) |
-| `listManagedIndexes` | `GET /v1/rag/managed_indexes` | `none` | [PHP](examples/rag/managed-indexes/listManagedIndexes.php) |
-| `retrieveManagedIndex` | `GET /v1/rag/managed_indexes/{index_name}` | `none` | [PHP](examples/rag/managed-indexes/retrieveManagedIndex.php) |
-| `updateManagedIndex` | `PUT /v1/rag/managed_indexes/{index_name}` | `json` | [PHP](examples/rag/managed-indexes/updateManagedIndex.php) |
-| `deleteManagedIndex` | `DELETE /v1/rag/managed_indexes/{index_name}` | `none` | [PHP](examples/rag/managed-indexes/deleteManagedIndex.php) |
-| `ingestManagedIndexDocuments` | `POST /v1/rag/managed_indexes/{index_name}/documents` | `json` | [PHP](examples/rag/managed-indexes/ingestManagedIndexDocuments.php) |
-| `deleteManagedIndexDocuments` | `DELETE /v1/rag/managed_indexes/{index_name}/documents` | `json` | [PHP](examples/rag/managed-indexes/deleteManagedIndexDocuments.php) |
-| `searchManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/search` | `json` | [PHP](examples/rag/managed-indexes/searchManagedIndex.php) |
-| `navigateManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/navigate` | `json` | [PHP](examples/rag/managed-indexes/navigateManagedIndex.php) |
-| `readManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/read` | `json` | [PHP](examples/rag/managed-indexes/readManagedIndex.php) |
-| `grepManagedIndex` | `POST /v1/rag/managed_indexes/{index_name}/grep` | `json` | [PHP](examples/rag/managed-indexes/grepManagedIndex.php) |
-| `retrieveManagedIndexChunk` | `GET /v1/rag/managed_indexes/{index_name}/chunks/{chunk_id}` | `none` | [PHP](examples/rag/managed-indexes/retrieveManagedIndexChunk.php) |
+| `createManagedIndex` | `POST /v1/context/search-indexes` | `json` | [PHP](examples/context/search-indexes/createManagedIndex.php) |
+| `listManagedIndexes` | `GET /v1/context/search-indexes` | `none` | [PHP](examples/context/search-indexes/listManagedIndexes.php) |
+| `retrieveManagedIndex` | `GET /v1/context/search-indexes/{index_name}` | `none` | [PHP](examples/context/search-indexes/retrieveManagedIndex.php) |
+| `updateManagedIndex` | `PUT /v1/context/search-indexes/{index_name}` | `json` | [PHP](examples/context/search-indexes/updateManagedIndex.php) |
+| `deleteManagedIndex` | `DELETE /v1/context/search-indexes/{index_name}` | `none` | [PHP](examples/context/search-indexes/deleteManagedIndex.php) |
+| `ingestManagedIndexDocuments` | `POST /v1/context/search-indexes/{index_name}/documents` | `json` | [PHP](examples/context/search-indexes/ingestManagedIndexDocuments.php) |
+| `deleteManagedIndexDocuments` | `DELETE /v1/context/search-indexes/{index_name}/documents` | `json` | [PHP](examples/context/search-indexes/deleteManagedIndexDocuments.php) |
+| `searchManagedIndex` | `POST /v1/context/search-indexes/{index_name}/search` | `json` | [PHP](examples/context/search-indexes/searchManagedIndex.php) |
+| `navigateManagedIndex` | `POST /v1/context/search-indexes/{index_name}/navigate` | `json` | [PHP](examples/context/search-indexes/navigateManagedIndex.php) |
+| `readManagedIndex` | `POST /v1/context/search-indexes/{index_name}/read` | `json` | [PHP](examples/context/search-indexes/readManagedIndex.php) |
+| `grepManagedIndex` | `POST /v1/context/search-indexes/{index_name}/grep` | `json` | [PHP](examples/context/search-indexes/grepManagedIndex.php) |
+| `retrieveManagedIndexChunk` | `GET /v1/context/search-indexes/{index_name}/chunks/{chunk_id}` | `none` | [PHP](examples/context/search-indexes/retrieveManagedIndexChunk.php) |
+| `retrieveManagedIndexSummary` | `GET /v1/context/search-indexes/{index_name}/summary_field/{language}` | `none` | [PHP](examples/context/search-indexes/retrieveManagedIndexSummary.php) |
+| `generateManagedIndexSummary` | `POST /v1/context/search-indexes/{index_name}/summary_field/{language}` | `none` | [PHP](examples/context/search-indexes/generateManagedIndexSummary.php) |
+| `setManagedIndexSummary` | `PUT /v1/context/search-indexes/{index_name}/summary_field/{language}` | `json` | [PHP](examples/context/search-indexes/setManagedIndexSummary.php) |
 
 ### Users
 
@@ -575,6 +630,9 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `listWorkspaces` | `GET /v1/users/me/workspaces` | `none` | [PHP](examples/users/listWorkspaces.php) |
 
 ### Observability / Judges
+
+These routes remain documented in the [Judges reference](https://docs.mistral.ai/api/endpoint/beta/observability/judges).
+Use [scorers](https://docs.mistral.ai/studio/observability/online-evaluations/scorers) for new online evaluations.
 
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
@@ -685,6 +743,7 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `bulkArchiveWorkflows` | `PUT /v1/workflows/archive` | `json` | [PHP](examples/workflows/bulkArchiveWorkflows.php) |
 | `bulkUnarchiveWorkflows` | `PUT /v1/workflows/unarchive` | `json` | [PHP](examples/workflows/bulkUnarchiveWorkflows.php) |
 | `archiveWorkflow` | `PUT /v1/workflows/{workflow_identifier}/archive` | `none` | [PHP](examples/workflows/archiveWorkflow.php) |
+| `addWorkflowTags` | `POST /v1/workflows/{workflow_identifier}/tags` | `json` | [PHP](examples/workflows/addWorkflowTags.php) |
 | `unarchiveWorkflow` | `PUT /v1/workflows/{workflow_identifier}/unarchive` | `none` | [PHP](examples/workflows/unarchiveWorkflow.php) |
 
 ### RAG / Ingestion
@@ -704,6 +763,33 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `unregisterDeployment` | `DELETE /v1/rag/deployments/{deployment_id}` | `none` | [PHP](examples/rag/search-indexes/unregisterDeployment.php) |
 | `updateIndexMetrics` | `PUT /v1/rag/deployments/{deployment_id}/metrics` | `json` | [PHP](examples/rag/search-indexes/updateIndexMetrics.php) |
 
+### Triggers
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `createTrigger` | `POST /v1/triggers` | `json` | [PHP](examples/triggers/createTrigger.php) |
+| `listTriggers` | `GET /v1/triggers` | `none` | [PHP](examples/triggers/listTriggers.php) |
+| `retrieveTrigger` | `GET /v1/triggers/{trigger_id}` | `none` | [PHP](examples/triggers/retrieveTrigger.php) |
+| `deleteTrigger` | `DELETE /v1/triggers/{trigger_id}` | `none` | [PHP](examples/triggers/deleteTrigger.php) |
+| `listTriggerEvents` | `GET /v1/triggers/{trigger_id}/events` | `none` | [PHP](examples/triggers/listTriggerEvents.php) |
+
+### Webhooks
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `listWebhooks` | `GET /v1/webhooks` | `none` | [PHP](examples/webhooks/listWebhooks.php) |
+| `createWebhook` | `POST /v1/webhooks` | `json` | [PHP](examples/webhooks/createWebhook.php) |
+| `retrieveWebhook` | `GET /v1/webhooks/{webhook_id}` | `none` | [PHP](examples/webhooks/retrieveWebhook.php) |
+| `deleteWebhook` | `DELETE /v1/webhooks/{webhook_id}` | `none` | [PHP](examples/webhooks/deleteWebhook.php) |
+| `retrieveWebhookSigningSecret` | `GET /v1/webhooks/{webhook_id}/signing-secret` | `none` | [PHP](examples/webhooks/retrieveWebhookSigningSecret.php) |
+
+### Billing
+
+| SDK method | HTTP route | Request body | Example |
+| --- | --- | --- | --- |
+| `getBudget` | `GET /v1/billing/budget` | `none` | [PHP](examples/billing/getBudget.php) |
+| `getSubscription` | `GET /v1/billing/subscription` | `none` | [PHP](examples/billing/getSubscription.php) |
+
 ### Administration / Billing
 
 | SDK method | HTTP route | Request body | Example |
@@ -719,6 +805,8 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | SDK method | HTTP route | Request body | Example |
 | --- | --- | --- | --- |
 | `deactivateAdminUser` | `POST /v1/admin/users/{user_id}/deactivate` | `none` | [PHP](examples/administration/users/deactivateAdminUser.php) |
+| `reactivateAdminUser` | `POST /v1/admin/users/{user_id}/reactivate` | `none` | [PHP](examples/administration/users/reactivateAdminUser.php) |
+| `listAdminUserWorkspaces` | `GET /v1/admin/users/{user_id}/workspaces` | `none` | [PHP](examples/administration/users/listAdminUserWorkspaces.php) |
 | `listAdminUsers` | `GET /v1/admin/users` | `none` | [PHP](examples/administration/users/listAdminUsers.php) |
 | `createAdminUsers` | `POST /v1/admin/users` | `json` | [PHP](examples/administration/users/createAdminUsers.php) |
 | `inviteAdminUsers` | `POST /v1/admin/users-invite` | `json` | [PHP](examples/administration/users/inviteAdminUsers.php) |
@@ -764,8 +852,6 @@ The catalog follows the current [Mistral AI API reference](https://docs.mistral.
 | `updateAdminGroupWorkspaceAssignment` | `PATCH /v1/admin/user-groups/{group_uuid}/workspaces/{workspace_uuid}` | `json` | [PHP](examples/administration/user-groups/updateAdminGroupWorkspaceAssignment.php) |
 | `removeAdminGroupFromWorkspace` | `DELETE /v1/admin/user-groups/{group_uuid}/workspaces/{workspace_uuid}` | `none` | [PHP](examples/administration/user-groups/removeAdminGroupFromWorkspace.php) |
 | `updateAdminUserGroupOrganizationRole` | `PATCH /v1/admin/user-groups/{group_uuid}/organization-role` | `json` | [PHP](examples/administration/user-groups/updateAdminUserGroupOrganizationRole.php) |
-| `retrieveAdminNestedGroupsAdmin` | `GET /v1/admin/user-groups/{group_uuid}/nested` | `none` | [PHP](examples/administration/user-groups/retrieveAdminNestedGroupsAdmin.php) |
-| `setAdminNestedGroupsAdmin` | `PATCH /v1/admin/user-groups/{group_uuid}/nested` | `json` | [PHP](examples/administration/user-groups/setAdminNestedGroupsAdmin.php) |
 
 ### Administration / API Keys
 
@@ -807,6 +893,11 @@ in an absolute origin. Without an override, the SDK selects `/v1` or `/v2` for e
 
 ## Migration Notes
 
+- The `*ManagedIndex*` methods now target `/v1/context/search-indexes`. Method names are unchanged; check the
+  [Search Index migration notes](https://docs.mistral.ai/studio/search/search-toolkit/changelog) for upstream changes.
+- The nested user-group methods `retrieveAdminNestedGroupsAdmin()` and `setAdminNestedGroupsAdmin()` are removed
+  because their routes are no longer documented. The direct group membership and workspace methods remain available.
+- The pipeline example now uses `MISTRAL_SCORER_SLUG` instead of `MISTRAL_JUDGE_SLUG`.
 - PHP 8.1 is no longer supported. Each supported PHP branch has its own minimum patch version listed above.
 - Rename the constructor and URL-builder named argument `apiVersion` to `basePath`, and replace
   `MISTRAL_API_VERSION` with `MISTRAL_API_BASE_PATH`. Leave the latter empty to select versions per endpoint.

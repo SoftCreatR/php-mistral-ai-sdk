@@ -18,16 +18,13 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// POST /v1/rag/managed_indexes/{index_name}/grep
+// PATCH /v1/observability/scorers/{scorer_slug}
 MistralAIFactory::request(
-    'grepManagedIndex',
+    'updateScorer',
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+        'scorer_slug' => MistralAIFactory::env('MISTRAL_SCORER_SLUG'),
     ],
     [
-        'source_id' => MistralAIFactory::env('MISTRAL_SOURCE_ID'),
-        'pattern' => 'PHP',
-        'mode' => 'phrase',
-        'top_k' => 5,
+        'description' => 'Checks whether a reply directly answers the user\'s question.',
     ],
 );

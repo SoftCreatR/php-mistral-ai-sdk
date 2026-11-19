@@ -18,18 +18,17 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// PUT /v1/rag/managed_indexes/{index_name}
+// POST /v1/context/search-indexes
 MistralAIFactory::request(
-    'updateManagedIndex',
+    'createManagedIndex',
+    [],
     [
-        'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
-    ],
-    [
-        'schema' => [
-            'document_fields' => [
-                'title' => [
-                    'type' => 'text',
-                ],
+        'name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
+        'config' => [
+            'embedding' => [
+                'type' => 'mistral',
+                'name' => 'mistral-embed',
+                'dimensions' => 1024,
             ],
         ],
     ],

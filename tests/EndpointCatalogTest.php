@@ -27,9 +27,9 @@ use SoftCreatR\MistralAI\MistralAIURLBuilder;
 final class EndpointCatalogTest extends TestCase
 {
     /** @throws JsonException */
-    public function testCatalogMatchesTheCurrentNonDeprecatedOpenApiRoutes(): void
+    public function testCatalogMatchesTheCurrentReferenceRoutes(): void
     {
-        // The reference also deprecates /agents/completions, despite its missing OpenAPI flag.
+        // Keep documented judge routes; exclude deprecated routes such as /agents/completions.
         $routes = [];
         foreach (MistralAIURLBuilder::getEndpoints() as $endpoint) {
             $routes[] = $endpoint['method'] . ' ' . ($endpoint['basePath'] ?? '/v1') . $endpoint['path'];
@@ -76,6 +76,7 @@ final class EndpointCatalogTest extends TestCase
             'deleteConnectorWorkspaceCredentials', 'deleteConnectorUserCredentials',
             'createAgentsCompletion', 'listAgents', 'updateLibrary', 'updateLibraryDocument', 'callConnectorTool',
             'executeWorkflowRegistration', 'provisionAdminGroupToWorkspace',
+            'retrieveAdminNestedGroupsAdmin', 'setAdminNestedGroupsAdmin',
         ] as $method) {
             $this->assertArrayNotHasKey($method, $endpoints);
         }

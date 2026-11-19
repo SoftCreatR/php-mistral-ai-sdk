@@ -18,9 +18,13 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// GET /v1/rag/managed_indexes
+// PATCH /v1/audio/sessions/{session_id}
 MistralAIFactory::request(
-    'listManagedIndexes',
-    [],
-    [],
+    'updateAudioSession',
+    [
+        'session_id' => MistralAIFactory::env('MISTRAL_AUDIO_SESSION_ID'),
+    ],
+    [
+        'instructions' => 'Answer briefly and ask a clarifying question when needed.',
+    ],
 );

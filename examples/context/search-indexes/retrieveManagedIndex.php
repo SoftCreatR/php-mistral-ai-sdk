@@ -18,15 +18,11 @@
 
 require_once \dirname(__DIR__, 2) . '/MistralAIFactory.php';
 
-// DELETE /v1/rag/managed_indexes/{index_name}/documents
+// GET /v1/context/search-indexes/{index_name}
 MistralAIFactory::request(
-    'deleteManagedIndexDocuments',
+    'retrieveManagedIndex',
     [
         'index_name' => MistralAIFactory::env('MISTRAL_INDEX_NAME'),
     ],
-    [
-        'document_ids' => [
-            'sdk-example-document',
-        ],
-    ],
+    [],
 );
